@@ -12,7 +12,7 @@ async function seed() {
     return;
   }
   if (!process.env.MONGODB_URI) {
-    console.error('Set MONGODB_URI before seeding.');
+    console.error('Set the Atlas connection string in MONGODB_URI before seeding.');
     process.exitCode = 1;
     return;
   }

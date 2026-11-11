@@ -66,7 +66,7 @@ function isOverdue(task) {
 
 // Validate the environment settings before connecting to MongoDB and opening the web port.
 async function start() {
-  if (!process.env.MONGODB_URI) throw new Error('Set MONGODB_URI before starting TaskFlow.');
+  if (!process.env.MONGODB_URI) throw new Error('Set the Atlas connection string in MONGODB_URI.');
   if (!/^[a-f0-9]{64}$/i.test(process.env.SESSION_SECRET || '')) {
     throw new Error('Set SESSION_SECRET to 64 random hexadecimal characters.');
   }
@@ -78,7 +78,7 @@ async function start() {
   try {
     await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
   } catch {
-    throw new Error('Could not connect to MongoDB. Check MONGODB_URI and the database service.');
+    throw new Error('Could not connect to MongoDB Atlas. Check MONGODB_URI, the database user, and the Atlas IP access list.');
   }
 
   const app = express();

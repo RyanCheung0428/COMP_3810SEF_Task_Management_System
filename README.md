@@ -29,7 +29,7 @@ COMP 3810SEF Autumn 2026 Group Project。TaskFlow 讓使用者登入後建立、
 | `public/` | CSS 和少量瀏覽器 JavaScript，例如確認刪除 |
 | `seed.js`、`scripts/demo.sh` | 測試帳號初始化及 cURL 示範 |
 | `task-input.js` | 網頁和 API 共用的任務驗證及搜尋條件 |
-| `Dockerfile`、`compose.yaml` | Node.js 24 應用程式及 MongoDB 8.0 服務 |
+| `Dockerfile`、`compose.yaml` | Node.js 24 app container and Atlas connection settings |
 | `.env.example` | 環境變數範例 |
 
 主要套件包括 Express（路由）、Mongoose（資料庫）、EJS（頁面）、`bcryptjs`（密碼雜湊）、`express-session`（登入 Session）和 `connect-mongo`（Session 儲存）。
@@ -44,34 +44,58 @@ COMP 3810SEF Autumn 2026 Group Project。TaskFlow 讓使用者登入後建立、
 | Dashboard and overdue labels | `routes/dashboard.js` counts tasks by status for `views/dashboard.ejs`. The task list uses `isOverdue` from `server.js` to compare due dates with today's date in Hong Kong. |
 | REST API | `server.js` checks the session before `routes/api.js` handles `/api/tasks`. The routes use the same task model and validation as the web pages, and return JSON. |
 
-## 使用 Docker 啟動
+## Run with Docker and MongoDB Atlas
 
-準備可執行 Docker Compose 的環境。在專案資料夾執行：
+Docker Compose runs the TaskFlow app. MongoDB Atlas stores its users, tasks, and sessions in the `taskflow` database.
+
+1. In your Atlas project, create a dedicated database user with the `readWrite` role on `taskflow`. Use this database user in the URI. [Atlas database users](https://www.mongodb.com/docs/atlas/security-add-mongodb-users/)
+2. In the project's IP access list, allow the public IP address from which the Docker host connects to Atlas. [Atlas IP access list](https://www.mongodb.com/docs/atlas/security/add-ip-address-to-list/)
+3. Open the cluster's **Connect → Drivers** screen and copy the connection string. Replace the username and password placeholders with the database user's credentials. Percent-encode reserved characters in the credentials. Put `/taskflow` immediately before the `?` so the URI names the correct database. [Connect using an Atlas driver URI](https://www.mongodb.com/docs/atlas/driver-connection/)
+
+Create `.env` if it does not already exist.
 
 ```sh
-cp .env.example .env
-openssl rand -hex 32
+test -f .env || cp .env.example .env
 ```
 
-將 `openssl` 產生的 64 個十六進位字元貼到 `.env` 的 `SESSION_SECRET`。設定至少 8 字元且不超過 72 bytes 的 `DEMO_PASSWORD`，例如 `TaskFlowDemo123!`，僅用於示範。
+Set `MONGODB_URI` in `.env` to your Atlas URI. Keep the query options supplied by Atlas. The example below uses placeholders.
+
+```dotenv
+MONGODB_URI=mongodb+srv://<db-user>:<encoded-db-password>@<cluster-host>/taskflow?retryWrites=true&w=majority
+```
+
+On a fresh setup, use `openssl rand -hex 32` to generate `SESSION_SECRET`. To create demo accounts, set `DEMO_PASSWORD` to at least 8 characters and no more than 72 bytes. Keep the filled `.env` private and outside the submission ZIP.
+
+Changing the URI points TaskFlow to Atlas. If you have existing local data, migrate users and tasks together and preserve their IDs before seeding Atlas. Keep the local copy until you have checked the imported accounts and tasks in Atlas.
+
+Start the app.
 
 ```sh
 docker compose up --build -d
+```
+
+For a fresh Atlas database, run the seed command to create `student1` and `student2`.
+
+```sh
 docker compose exec app npm run seed
 ```
 
-開啟 [http://localhost:3000](http://localhost:3000)。使用 `student1` 或 `student2` 登入，兩個帳號的初始密碼都是首次初始化時設定的 `DEMO_PASSWORD`。重複執行 `seed` 會保留已有帳號及任務。
+Open [http://localhost:3000](http://localhost:3000). Sign in with a migrated account or use `student1` or `student2` with the `DEMO_PASSWORD` you set when creating them. Repeating the seed command leaves existing accounts and tasks intact.
 
-| 環境變數 | 用途 |
+| Environment variable | Purpose |
 | --- | --- |
-| `PORT` | 網站連接埠，預設 `3000` |
-| `MONGODB_URI` | 資料庫連線，Compose 使用服務名稱 `mongo` |
-| `SESSION_SECRET` | Session Cookie 的簽署密鑰 |
-| `DEMO_PASSWORD` | 初始化測試帳號的密碼 |
-| `COOKIE_SECURE` | HTTP 示範使用 `false`；HTTPS 使用 `true` |
-| `TRUST_PROXY` | 直接連線使用 `false`；在可信的單層反向代理後使用 `true` |
+| `PORT` | Host port, default `3000` |
+| `MONGODB_URI` | Atlas Drivers connection string with `taskflow` as the database |
+| `SESSION_SECRET` | Key used to sign the session cookie |
+| `DEMO_PASSWORD` | Password used when seeding the demo accounts |
+| `COOKIE_SECURE` | `false` for the local HTTP demo. Set `true` when serving over HTTPS. |
+| `TRUST_PROXY` | `false` for a direct connection. Set `true` behind one trusted reverse proxy. |
 
-MongoDB 只在 Compose 網絡內連線，資料放在 Docker volume。使用 `docker compose logs app` 查看網站日誌，使用 `docker compose down` 停止服務並保留資料。`docker compose down -v` 會一併刪除 volume 內的帳號和任務。
+Use `docker compose logs app` to check startup and `docker compose down` to stop the app. The data remains in Atlas when the container is stopped or replaced.
+
+### Browse TaskFlow data in Atlas
+
+In your Atlas project, open **Database → Data Explorer**, expand the connected cluster and the `taskflow` database, then open `users`, `tasks`, or `sessions` to browse its documents. Collections appear as the app creates or imports their data. [Browse Atlas collections](https://www.mongodb.com/docs/atlas/atlas-ui/collections/)
 
 ## 網頁操作
 
@@ -165,6 +189,8 @@ rm -f "$COOKIE_JAR"
 | Chrome、Edge，375px／1366px 寬度 | 表單和任務操作可用，鍵盤能切換並操作按鈕 |
 
 驗收記錄（2026 年 11 月 11 日）：在 WSL 的 Docker Compose 環境實測登入、網頁與 API CRUD、兩個帳號的資料隔離，以及重建容器後保留資料。cURL 示範回傳 201、200、200、200。Chrome 和 Edge 均完成鍵盤登入及 375px／1366px 版面檢查。
+
+This verification was performed before the switch to Atlas.
 
 ## 展示及提交
 
