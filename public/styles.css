@@ -121,7 +121,7 @@ input:not([type="hidden"]), select, textarea {
 
 textarea { resize: vertical; }
 
-/* Use a common button style with different colors for secondary and delete actions. */
+/* Use a common button style with color variants for different actions. */
 .button {
   display: inline-flex;
   align-items: center;
@@ -139,6 +139,15 @@ textarea { resize: vertical; }
 }
 
 .button:hover { background: #0c4943; }
+
+.button-register { background: #634591; }
+
+.button-register:hover { background: #503574; }
+
+.auth-link {
+  display: flex;
+  margin-top: 1rem;
+}
 
 .button-secondary {
   color: #125d55;

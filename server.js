@@ -50,6 +50,14 @@ function requireCsrf(req, res, next) {
   return showError(req, res, 403, 'Invalid form token. Reload the page and try again.');
 }
 
+// Prepare a CSRF token for visitors opening the login or registration form.
+function prepareGuestForm(req, res, next) {
+  if (req.session.userId) return res.redirect('/tasks');
+  if (!req.session.csrfToken) req.session.csrfToken = randomBytes(32).toString('hex');
+  res.locals.csrfToken = req.session.csrfToken;
+  next();
+}
+
 // Display the stored due date as YYYY-MM-DD without shifting the calendar day.
 function displayDate(value) {
   if (!value) return '';
@@ -79,6 +87,11 @@ async function start() {
     await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
   } catch {
     throw new Error('Could not connect to MongoDB Atlas. Check MONGODB_URI, the database user, and the Atlas IP access list.');
+  }
+  try {
+    await User.init();
+  } catch {
+    throw new Error('Could not initialize the users collection and its unique username index.');
   }
 
   const app = express();
@@ -121,12 +134,10 @@ async function start() {
   // Send visitors to the right page based on whether they are already signed in.
   app.get('/', (req, res) => res.redirect(req.session.userId ? '/tasks' : '/login'));
 
-  // Prepare a token for the login form in the visitor's session.
-  app.get('/login', (req, res) => {
-    if (req.session.userId) return res.redirect('/tasks');
-    if (!req.session.csrfToken) req.session.csrfToken = randomBytes(32).toString('hex');
-    res.locals.csrfToken = req.session.csrfToken;
-    res.render('login', { username: '', error: '' });
+  app.get('/login', prepareGuestForm, (req, res) => {
+    const message = req.session.registrationMessage || '';
+    delete req.session.registrationMessage;
+    res.render('login', { username: '', error: '', message });
   });
 
   // Look up the username and check the submitted password against its stored hash.
@@ -139,7 +150,7 @@ async function start() {
       user = await User.findOne({ username }).select('+passwordHash');
     }
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-      return res.status(401).render('login', { username, error: 'Invalid username or password.' });
+      return res.status(401).render('login', { username, error: 'Invalid username or password.', message: '' });
     }
 
     // Replace the guest session and save the user ID before redirecting to the task list.
@@ -151,6 +162,40 @@ async function start() {
         if (saveError) return next(saveError);
         res.redirect(303, '/tasks');
       });
+    });
+  });
+
+  app.get('/register', prepareGuestForm, (req, res) => {
+    res.render('register', { username: '', error: '' });
+  });
+
+  app.post('/register', form, requireCsrf, async (req, res, next) => {
+    if (req.session.userId) return res.redirect(303, '/tasks');
+
+    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+    const password = req.body?.password;
+    if (!username || username.length > 64) {
+      return res.status(400).render('register', { username, error: 'Enter a username of 1 to 64 characters.' });
+    }
+    if (typeof password !== 'string' || password.trim().length < 8 || Buffer.byteLength(password) > 72) {
+      return res.status(400).render('register', {
+        username,
+        error: 'Use at least 8 characters after trimming spaces and at most 72 bytes.'
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    try {
+      await User.create({ username, passwordHash });
+    } catch (error) {
+      if (error.code !== 11000) throw error;
+      return res.status(409).render('register', { username, error: 'That username is already taken' });
+    }
+
+    req.session.registrationMessage = 'Account created. Please log in.';
+    req.session.save((error) => {
+      if (error) return next(error);
+      res.redirect(303, '/login');
     });
   });
 
