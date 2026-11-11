@@ -1,3 +1,4 @@
+// Start the Express server and handle login, sessions, and shared request checks.
 const path = require('node:path');
 const { randomBytes } = require('node:crypto');
 const express = require('express');
@@ -12,17 +13,21 @@ const dashboardRoutes = require('./routes/dashboard');
 const apiRoutes = require('./routes/api');
 
 const cookieName = 'taskflow.sid';
+// Browser JavaScript cannot read this cookie. Enable Secure when the site uses HTTPS.
 const cookieOptions = {
   httpOnly: true,
   sameSite: 'lax',
   secure: process.env.COOKIE_SECURE === 'true'
 };
+// The sv-SE locale formats the day as YYYY-MM-DD, which sorts by calendar date.
 const hongKongDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Hong_Kong' });
 
+// Identify API URLs so the server can choose the correct response format.
 function isApi(req) {
   return /^\/api(?:[/?]|$)/i.test(req.originalUrl);
 }
 
+// API clients receive JSON errors, and browser pages use the EJS error template.
 function showError(req, res, status, message) {
   if (isApi(req)) {
     return res.status(status).json({ error: message });
@@ -30,13 +35,14 @@ function showError(req, res, status, message) {
   return res.status(status).render('error', { status, message });
 }
 
+// Stop requests without a signed-in session before they reach task routes.
 function requireLogin(req, res, next) {
   if (req.session.userId) return next();
   if (isApi(req)) return showError(req, res, 401, 'Please sign in first.');
   return res.redirect('/login');
 }
 
-// Compare a token from the form or API header with the one in this session.
+// For write requests, check that the form or API token belongs to this session.
 function requireCsrf(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
   const token = isApi(req) ? req.get('X-CSRF-Token') : req.body?._csrf;
@@ -44,6 +50,7 @@ function requireCsrf(req, res, next) {
   return showError(req, res, 403, 'Invalid form token. Reload the page and try again.');
 }
 
+// Display the stored due date as YYYY-MM-DD without shifting the calendar day.
 function displayDate(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -51,11 +58,13 @@ function displayDate(value) {
   return date.toISOString().slice(0, 10);
 }
 
+// A task is overdue when it is incomplete and its due date is before today in Hong Kong.
 function isOverdue(task) {
   const due = displayDate(task.dueDate);
   return Boolean(due && task.status !== 'Completed' && due < hongKongDate.format(new Date()));
 }
 
+// Validate the environment settings before connecting to MongoDB and opening the web port.
 async function start() {
   if (!process.env.MONGODB_URI) throw new Error('Set MONGODB_URI before starting TaskFlow.');
   if (!/^[a-f0-9]{64}$/i.test(process.env.SESSION_SECRET || '')) {
@@ -80,14 +89,17 @@ async function start() {
   app.locals.displayDate = displayDate;
   app.locals.isOverdue = isOverdue;
 
+  // Parse the URL-encoded fields sent by the HTML forms.
   const form = express.urlencoded({ extended: false, limit: '16kb' });
   app.use(express.static(path.join(__dirname, 'public')));
+  // Tell browsers not to cache dynamic pages containing private task or session data.
   app.use((req, res, next) => {
     res.set('Cache-Control', 'no-store');
     res.locals.signedIn = false;
     res.locals.csrfToken = '';
     next();
   });
+  // The browser stores a signed session ID. The session data lives in MongoDB.
   app.use(session({
     name: cookieName,
     secret: process.env.SESSION_SECRET,
@@ -99,14 +111,17 @@ async function start() {
     saveUninitialized: false,
     cookie: { ...cookieOptions, maxAge: 2 * 60 * 60 * 1000 }
   }));
+  // Make the login state and form token available to all EJS templates.
   app.use((req, res, next) => {
     res.locals.signedIn = Boolean(req.session.userId);
     res.locals.csrfToken = req.session.csrfToken || '';
     next();
   });
 
+  // Send visitors to the right page based on whether they are already signed in.
   app.get('/', (req, res) => res.redirect(req.session.userId ? '/tasks' : '/login'));
 
+  // Prepare a token for the login form in the visitor's session.
   app.get('/login', (req, res) => {
     if (req.session.userId) return res.redirect('/tasks');
     if (!req.session.csrfToken) req.session.csrfToken = randomBytes(32).toString('hex');
@@ -114,6 +129,7 @@ async function start() {
     res.render('login', { username: '', error: '' });
   });
 
+  // Look up the username and check the submitted password against its stored hash.
   app.post('/login', form, requireCsrf, async (req, res, next) => {
     const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
     const password = req.body?.password;
@@ -126,6 +142,7 @@ async function start() {
       return res.status(401).render('login', { username, error: 'Invalid username or password.' });
     }
 
+    // Replace the guest session and save the user ID before redirecting to the task list.
     req.session.regenerate((error) => {
       if (error) return next(error);
       req.session.userId = user._id.toString();
@@ -137,6 +154,7 @@ async function start() {
     });
   });
 
+  // Delete the session from MongoDB and clear its cookie in the browser.
   app.post('/logout', requireLogin, form, requireCsrf, (req, res, next) => {
     req.session.destroy((error) => {
       if (error) return next(error);
@@ -145,10 +163,12 @@ async function start() {
     });
   });
 
+  // Check login before routing. Browser forms use URL-encoded data and the API uses JSON.
   app.use('/tasks', requireLogin, form, requireCsrf, taskRoutes);
   app.use('/dashboard', requireLogin, dashboardRoutes);
   app.use('/api/tasks', requireLogin, express.json({ limit: '16kb' }), requireCsrf, apiRoutes);
 
+  // These handlers run after the routes for unmatched URLs and failed requests.
   app.use((req, res) => showError(req, res, 404, 'Page not found.'));
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
@@ -160,6 +180,7 @@ async function start() {
     return showError(req, res, 500, 'Something went wrong. Please try again.');
   });
 
+  // Accept requests after setup is complete. Close the database connection if the port fails.
   const server = app.listen(port, '0.0.0.0', () => console.log(`TaskFlow is listening on port ${port}.`));
   server.on('error', async () => {
     console.error('Could not start the web server. Check PORT.');
@@ -168,6 +189,7 @@ async function start() {
   });
 }
 
+// Exit with a failure status if startup cannot finish.
 start().catch(async (error) => {
   console.error(error.message);
   await mongoose.disconnect();

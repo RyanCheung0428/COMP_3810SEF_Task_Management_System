@@ -34,6 +34,16 @@ COMP 3810SEF Autumn 2026 Group Project。TaskFlow 讓使用者登入後建立、
 
 主要套件包括 Express（路由）、Mongoose（資料庫）、EJS（頁面）、`bcryptjs`（密碼雜湊）、`express-session`（登入 Session）和 `connect-mongo`（Session 儲存）。
 
+### Where to read the code for each feature
+
+| Feature | Follow the request |
+| --- | --- |
+| Login and logout | `views/login.ejs` submits to `server.js`. The server finds the account through `models/User.js`, checks the password against its stored hash, and records the user ID in the session. Logging out removes the session. |
+| Task list and filters | `routes/tasks.js` uses `readTaskFilters` from `task-input.js` to build the search conditions, queries the signed-in user's tasks, then renders `views/tasks.ejs`. |
+| Add, edit, and delete tasks | `views/task-form.ejs` submits to `routes/tasks.js`, which validates input in `task-input.js` before writing through `models/Task.js`. `public/forms.js` asks for confirmation before the delete form is sent. |
+| Dashboard and overdue labels | `routes/dashboard.js` counts tasks by status for `views/dashboard.ejs`. The task list uses `isOverdue` from `server.js` to compare due dates with today's date in Hong Kong. |
+| REST API | `server.js` checks the session before `routes/api.js` handles `/api/tasks`. The routes use the same task model and validation as the web pages, and return JSON. |
+
 ## 使用 Docker 啟動
 
 準備可執行 Docker Compose 的環境。在專案資料夾執行：

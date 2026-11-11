@@ -1,9 +1,11 @@
+<%# List the current user's tasks and provide search, add, edit, and delete controls. -%>
 <%- include('partials/header', { title: 'Tasks', page: 'tasks' }) %>
 <div class="page-heading">
   <h1>Your tasks</h1>
   <a class="button" href="/tasks/new">Add task</a>
 </div>
 
+<%# Show the previous action's result or errors from the current filters. -%>
 <% if (message) { %>
   <p class="notice notice-success" role="status"><%= message %></p>
 <% } %>
@@ -15,6 +17,7 @@
   </ul>
 <% } %>
 
+<%# The GET form puts filters in the URL. The server returns matching tasks and keeps the selected filters. -%>
 <form class="panel filters" method="get" action="/tasks" aria-label="Task filters">
   <div>
     <label for="filter-title">Title keyword</label>
@@ -44,6 +47,7 @@
   </div>
 </form>
 
+<%# Use a different message for an empty task list and a search with no matches. -%>
 <% if (!tasks.length) { %>
   <div class="panel empty">
     <% if (filters.title || filters.status || filters.priority) { %>
@@ -56,6 +60,7 @@
   </div>
 <% } else { %>
   <ul class="task-list">
+    <%# Render one card per task and display user input as text. -%>
     <% for (const task of tasks) { %>
       <li class="panel task">
         <div>
@@ -74,6 +79,7 @@
                 <dt>Due date</dt>
                 <dd>
                   <time datetime="<%= displayDate(task.dueDate) %>"><%= displayDate(task.dueDate) %></time>
+                  <%# Use the shared helper to check if a task is overdue in Hong Kong. -%>
                   <% if (isOverdue(task)) { %>
                     <span class="overdue">Overdue</span>
                   <% } %>
@@ -84,6 +90,7 @@
         </div>
         <div class="actions">
           <a class="button button-secondary" href="/tasks/<%= task._id %>/edit" aria-label="Edit <%= task.title %>">Edit</a>
+          <%# The browser asks for confirmation before submitting this form. -%>
           <form method="post" action="/tasks/<%= task._id %>/delete" data-confirm="Delete this task?">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button class="button button-danger" type="submit" aria-label="Delete <%= task.title %>">Delete</button>

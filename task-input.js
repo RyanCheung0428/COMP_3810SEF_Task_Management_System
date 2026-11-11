@@ -1,6 +1,8 @@
+// The task pages and API share these field choices, validation rules and search filters.
 const statuses = ['Pending', 'In Progress', 'Completed'];
 const priorities = ['Low', 'Medium', 'High'];
 
+// These defaults fill the new-task form and list the fields a user can edit.
 const emptyTask = {
   title: '',
   description: '',
@@ -10,6 +12,7 @@ const emptyTask = {
   dueDate: null
 };
 
+// Return cleaned task fields and errors. A partial update checks only the submitted fields.
 function validateTask(input, partial = false) {
   const task = partial ? {} : { ...emptyTask };
   const errors = {};
@@ -19,7 +22,7 @@ function validateTask(input, partial = false) {
     return { task, errors };
   }
 
-  // Copy only editable fields. IDs, ownership and timestamps come from the server.
+  // Copy only editable fields. The server sets IDs, ownership and timestamps.
   for (const field of Object.keys(emptyTask)) {
     if (!Object.hasOwn(input, field)) continue;
 
@@ -29,7 +32,7 @@ function validateTask(input, partial = false) {
         task.dueDate = null;
       } else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
         const date = new Date(`${value}T00:00:00.000Z`);
-        // Reject impossible dates, including dates JavaScript rolls into the next month.
+        // Store dates at midnight UTC. Convert back to catch impossible dates such as February 30.
         if (!Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value) {
           task.dueDate = date;
         } else {
@@ -47,6 +50,7 @@ function validateTask(input, partial = false) {
     }
   }
 
+  // Check text lengths and allowed choices, and record each error under its field name.
   if (task.title !== undefined && (task.title.length < 1 || task.title.length > 120)) {
     errors.title = 'Enter a title of 1 to 120 characters.';
   }
@@ -66,6 +70,7 @@ function validateTask(input, partial = false) {
   return { task, errors };
 }
 
+// Return the form values, MongoDB query conditions and any validation errors.
 function readTaskFilters(input) {
   const filters = { title: '', status: '', priority: '' };
   const query = {};
@@ -83,11 +88,12 @@ function readTaskFilters(input) {
   if (filters.title.length > 120) {
     errors.title = 'Use 120 characters or fewer.';
   } else if (filters.title) {
-    // Search for the typed text, including any regular expression characters.
+    // Treat symbols as literal text and match without regard to uppercase or lowercase.
     const text = filters.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     query.title = new RegExp(text, 'i');
   }
 
+  // Add status and priority to the same query so a task must match every filter.
   if (filters.status) {
     if (statuses.includes(filters.status)) query.status = filters.status;
     else errors.status = 'Choose a valid status.';

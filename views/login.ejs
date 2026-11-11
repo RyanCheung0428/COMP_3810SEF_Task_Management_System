@@ -1,6 +1,8 @@
+<%# The login form sends the username, password, and form token to POST /login. -%>
 <%- include('partials/header', { title: 'Log in', page: 'login' }) %>
 <section class="panel narrow">
   <h1>Log in</h1>
+  <%# Show the login error and keep the username for another attempt. -%>
   <% if (error) { %>
     <p class="notice notice-error" role="alert"><%= error %></p>
   <% } %>
