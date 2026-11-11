@@ -1,0 +1,11 @@
+<%- include('partials/header', { title: 'Error ' + status, page: '' }) %>
+<section class="panel narrow">
+  <h1>Error <%= status %></h1>
+  <p><%= message %></p>
+  <% if (signedIn) { %>
+    <a class="button" href="/tasks">Back to tasks</a>
+  <% } else { %>
+    <a class="button" href="/login">Go to login</a>
+  <% } %>
+</section>
+<%- include('partials/footer') %>

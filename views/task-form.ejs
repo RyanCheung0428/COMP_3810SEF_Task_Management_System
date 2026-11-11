@@ -1,0 +1,75 @@
+<%- include('partials/header', { title: heading, page: 'tasks' }) %>
+<section class="panel form-panel">
+  <h1><%= heading %></h1>
+  <% if (errors._form) { %>
+    <p class="notice notice-error" role="alert"><%= errors._form %></p>
+  <% } %>
+  <form method="post" action="<%= action %>" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div>
+      <label for="title">Title</label>
+      <input id="title" name="title" value="<%= task.title %>" maxlength="120" required
+        <% if (errors.title) { %> aria-invalid="true" aria-describedby="title-error"<% } %>>
+      <% if (errors.title) { %>
+        <p class="field-error" id="title-error"><%= errors.title %></p>
+      <% } %>
+    </div>
+    <div>
+      <label for="description">Description <span class="optional">(optional)</span></label>
+      <textarea id="description" name="description" rows="4" maxlength="1000"
+        <% if (errors.description) { %> aria-invalid="true" aria-describedby="description-error"<% } %>><%= task.description %></textarea>
+      <% if (errors.description) { %>
+        <p class="field-error" id="description-error"><%= errors.description %></p>
+      <% } %>
+    </div>
+    <div class="form-row">
+      <div>
+        <label for="status">Status</label>
+        <select id="status" name="status" required
+          <% if (errors.status) { %> aria-invalid="true" aria-describedby="status-error"<% } %>>
+          <% for (const status of statuses) { %>
+            <option value="<%= status %>"<% if ((task.status || 'Pending') === status) { %> selected<% } %>><%= status %></option>
+          <% } %>
+        </select>
+        <% if (errors.status) { %>
+          <p class="field-error" id="status-error"><%= errors.status %></p>
+        <% } %>
+      </div>
+      <div>
+        <label for="priority">Priority</label>
+        <select id="priority" name="priority" required
+          <% if (errors.priority) { %> aria-invalid="true" aria-describedby="priority-error"<% } %>>
+          <% for (const priority of priorities) { %>
+            <option value="<%= priority %>"<% if ((task.priority || 'Medium') === priority) { %> selected<% } %>><%= priority %></option>
+          <% } %>
+        </select>
+        <% if (errors.priority) { %>
+          <p class="field-error" id="priority-error"><%= errors.priority %></p>
+        <% } %>
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label for="category">Category <span class="optional">(optional)</span></label>
+        <input id="category" name="category" value="<%= task.category %>"
+          <% if (errors.category) { %> aria-invalid="true" aria-describedby="category-error"<% } %>>
+        <% if (errors.category) { %>
+          <p class="field-error" id="category-error"><%= errors.category %></p>
+        <% } %>
+      </div>
+      <div>
+        <label for="dueDate">Due date <span class="optional">(optional)</span></label>
+        <input id="dueDate" name="dueDate" type="date" value="<%= displayDate(task.dueDate) %>"
+          <% if (errors.dueDate) { %> aria-invalid="true" aria-describedby="dueDate-error"<% } %>>
+        <% if (errors.dueDate) { %>
+          <p class="field-error" id="dueDate-error"><%= errors.dueDate %></p>
+        <% } %>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="button" type="submit">Save task</button>
+      <a class="button button-secondary" href="/tasks">Cancel</a>
+    </div>
+  </form>
+</section>
+<%- include('partials/footer') %>

@@ -1,0 +1,96 @@
+<%- include('partials/header', { title: 'Tasks', page: 'tasks' }) %>
+<div class="page-heading">
+  <h1>Your tasks</h1>
+  <a class="button" href="/tasks/new">Add task</a>
+</div>
+
+<% if (message) { %>
+  <p class="notice notice-success" role="status"><%= message %></p>
+<% } %>
+<% if (errors && Object.keys(errors).length) { %>
+  <ul class="notice notice-error" role="alert">
+    <% for (const error of Object.values(errors)) { %>
+      <li><%= error %></li>
+    <% } %>
+  </ul>
+<% } %>
+
+<form class="panel filters" method="get" action="/tasks" aria-label="Task filters">
+  <div>
+    <label for="filter-title">Title keyword</label>
+    <input id="filter-title" name="title" value="<%= filters.title %>" placeholder="Search by title">
+  </div>
+  <div>
+    <label for="filter-status">Status</label>
+    <select id="filter-status" name="status">
+      <option value="">All statuses</option>
+      <% for (const status of statuses) { %>
+        <option value="<%= status %>"<% if (filters.status === status) { %> selected<% } %>><%= status %></option>
+      <% } %>
+    </select>
+  </div>
+  <div>
+    <label for="filter-priority">Priority</label>
+    <select id="filter-priority" name="priority">
+      <option value="">All priorities</option>
+      <% for (const priority of priorities) { %>
+        <option value="<%= priority %>"<% if (filters.priority === priority) { %> selected<% } %>><%= priority %></option>
+      <% } %>
+    </select>
+  </div>
+  <div class="actions">
+    <button class="button" type="submit">Search</button>
+    <a class="button button-secondary" href="/tasks">Clear filters</a>
+  </div>
+</form>
+
+<% if (!tasks.length) { %>
+  <div class="panel empty">
+    <% if (filters.title || filters.status || filters.priority) { %>
+      <h2>No matching tasks</h2>
+      <p>Change the filters to see more tasks.</p>
+    <% } else { %>
+      <h2>No tasks yet</h2>
+      <p>Add a task to get started.</p>
+    <% } %>
+  </div>
+<% } else { %>
+  <ul class="task-list">
+    <% for (const task of tasks) { %>
+      <li class="panel task">
+        <div>
+          <h2><%= task.title %></h2>
+          <% if (task.description) { %>
+            <p class="description"><%= task.description %></p>
+          <% } %>
+          <dl class="task-details">
+            <div><dt>Status</dt><dd><%= task.status %></dd></div>
+            <div><dt>Priority</dt><dd><%= task.priority %></dd></div>
+            <% if (task.category) { %>
+              <div><dt>Category</dt><dd><%= task.category %></dd></div>
+            <% } %>
+            <% if (task.dueDate) { %>
+              <div>
+                <dt>Due date</dt>
+                <dd>
+                  <time datetime="<%= displayDate(task.dueDate) %>"><%= displayDate(task.dueDate) %></time>
+                  <% if (isOverdue(task)) { %>
+                    <span class="overdue">Overdue</span>
+                  <% } %>
+                </dd>
+              </div>
+            <% } %>
+          </dl>
+        </div>
+        <div class="actions">
+          <a class="button button-secondary" href="/tasks/<%= task._id %>/edit" aria-label="Edit <%= task.title %>">Edit</a>
+          <form method="post" action="/tasks/<%= task._id %>/delete" data-confirm="Delete this task?">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="button button-danger" type="submit" aria-label="Delete <%= task.title %>">Delete</button>
+          </form>
+        </div>
+      </li>
+    <% } %>
+  </ul>
+<% } %>
+<%- include('partials/footer') %>

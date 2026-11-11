@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.zip
+cookies*.txt
+.playwright-cli/
+output/playwright/

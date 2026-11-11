@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> | TaskFlow</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/forms.js" defer></script>
+</head>
+<body data-signed-in="<%= signedIn ? 'yes' : 'no' %>">
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="<%= signedIn ? '/tasks' : '/login' %>">TaskFlow</a>
+      <% if (signedIn) { %>
+        <nav aria-label="Main navigation">
+          <a href="/tasks"<% if (page === 'tasks') { %> aria-current="page"<% } %>>Tasks</a>
+          <a href="/dashboard"<% if (page === 'dashboard') { %> aria-current="page"<% } %>>Dashboard</a>
+          <form method="post" action="/logout">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="button button-secondary" type="submit">Log out</button>
+          </form>
+        </nav>
+      <% } %>
+    </div>
+  </header>
+  <main id="main-content" class="container" tabindex="-1">
