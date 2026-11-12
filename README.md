@@ -9,13 +9,13 @@ COMP 3810SEF Autumn 2026 Group Project。TaskFlow 讓使用者登入後建立、
 | 組員 | 姓名 | 學號（SID） | 計劃分工 |
 | --- | --- | --- | --- |
 | 1 | 待填 | 待填 | 登入、登出、Session 及權限檢查 |
-| 2 | 待填 | 待填 | MongoDB、資料模型及測試帳號初始化 |
+| 2 | 待填 | 待填 | MongoDB、資料模型及帳戶管理 |
 | 3 | 待填 | 待填 | 任務列表、搜尋及篩選 |
 | 4 | 待填 | 待填 | 修改、刪除及資料驗證 |
 | 5 | 待填 | 待填 | REST API、HTTP 狀態碼及 cURL |
 | 6 | 待填 | 待填 | EJS、CSS 及 Docker |
 
-全組共同進行整合測試及展示練習。每位組員應能解釋自己完成的部分。
+全組共同進行整合測試。每位組員應能解釋自己完成的部分。
 
 ## 專案檔案
 
@@ -27,7 +27,7 @@ COMP 3810SEF Autumn 2026 Group Project。TaskFlow 讓使用者登入後建立、
 | `models/` | `User` 與 `Task` 的 Mongoose 資料模型 |
 | `views/` | EJS 頁面及共用頁首／頁尾 |
 | `public/` | CSS 和少量瀏覽器 JavaScript，例如確認刪除 |
-| `seed.js`、`scripts/` | 測試帳號初始化、資料遷移及 cURL 示範 |
+| `scripts/` | 資料遷移 |
 | `task-input.js` | 網頁和 API 共用的任務驗證及搜尋條件 |
 | `Dockerfile`、`compose.yaml` | Node.js 24 app container and Atlas connection settings |
 | `.env.example` | 環境變數範例 |
@@ -64,9 +64,9 @@ Set `MONGODB_URI` in `.env` to your Atlas URI. Keep the query options supplied b
 MONGODB_URI=mongodb+srv://<db-user>:<encoded-db-password>@<cluster-host>/taskflow?retryWrites=true&w=majority
 ```
 
-On a fresh setup, use `openssl rand -hex 32` to generate `SESSION_SECRET`. To create demo accounts, set `DEMO_PASSWORD` to at least 8 characters and no more than 72 bytes. Keep the filled `.env` private and outside the submission ZIP.
+On a fresh setup, use `openssl rand -hex 32` to generate `SESSION_SECRET`. Keep the filled `.env` private and outside the submission ZIP.
 
-Changing the URI points TaskFlow to Atlas. If you have existing local data, migrate users and tasks together and preserve their IDs before seeding Atlas. Keep the local copy until you have checked the imported accounts and tasks in Atlas.
+Changing the URI points TaskFlow to Atlas. If you have existing local data, migrate users and tasks together and preserve their IDs when moving to Atlas. Keep the local copy until you have checked the imported accounts and tasks in Atlas.
 
 Start the app.
 
@@ -74,21 +74,14 @@ Start the app.
 docker compose up --build -d
 ```
 
-For a fresh Atlas database, run the seed command to create `student1` and `student2`.
-
-```sh
-docker compose exec app npm run seed
-```
-
-Open [http://localhost:3000](http://localhost:3000). Sign in with a migrated account or use `student1` or `student2` with the `DEMO_PASSWORD` you set when creating them. Repeating the seed command leaves existing accounts and tasks intact.
+Open [http://localhost:3000](http://localhost:3000). Create an account at `/register`, or sign in with a migrated account.
 
 | Environment variable | Purpose |
 | --- | --- |
 | `PORT` | Host port, default `3000` |
 | `MONGODB_URI` | Atlas Drivers connection string with `taskflow` as the database |
 | `SESSION_SECRET` | Key used to sign the session cookie |
-| `DEMO_PASSWORD` | Password used when seeding the demo accounts |
-| `COOKIE_SECURE` | `false` for the local HTTP demo. Set `true` when serving over HTTPS. |
+| `COOKIE_SECURE` | `false` for the local HTTP. Set `true` when serving over HTTPS. |
 | `TRUST_PROXY` | `false` for a direct connection. Set `true` behind one trusted reverse proxy. |
 
 Use `docker compose logs app` to check startup and `docker compose down` to stop the app. The data remains in Atlas when the container is stopped or replaced.
@@ -112,14 +105,14 @@ docker compose up -d app
 
 ## 網頁操作
 
-1. **登入。** 開啟 `/login`，輸入測試帳號的 Username 和 Password，然後按 **Log in** 進入 Tasks 頁。未登入訪問任務頁會返回登入頁。
+1. **登入。** 先在 `/register` 建立帳號，然後開啟 `/login`，輸入帳號的 Username 和 Password，然後按 **Log in** 進入 Tasks 頁。未登入訪問任務頁會返回登入頁。
 2. **新增。** 在 Tasks 頁按 **Add task**，輸入 Title，並選擇填寫 Description 和 Due date，再按 **Save task**。新任務預設為進行中。
 3. **查看及搜尋。** Tasks 頁按最新建立時間排序。輸入標題關鍵字即可搜尋。按 **Clear filters** 恢復完整列表。
 4. **更新任務。** 按 **Mark complete** 完成任務，或按 **Reopen** 重新開啟。按 **Edit** 修改資料會保留任務的狀態。按 **Delete** 後可確認或取消刪除。
 5. **查看逾期任務。** Tasks 頁會為尚未完成且截止日早於香港當天日期的任務顯示 **Overdue**。
 6. **登出。** 按 **Log out**。再開啟任務頁時需要重新登入。
 
-## REST API 及 cURL 示範
+## REST API
 
 API 和網頁使用同一套私人任務及登入 Session。GET 可使用 `title` 和 `status` 組合篩選。POST 和 PUT 接收 JSON，PUT 保留未提交的欄位。可編輯欄位為 `title`、`description`、`status`、`dueDate`。`status` 接受 `In Progress` 和 `Completed`，POST 省略時預設為 `In Progress`。日期輸入格式為 `YYYY-MM-DD`，可用空字串或 `null` 清除。JSON 回傳日期採 ISO 格式。
 
@@ -132,60 +125,6 @@ API 和網頁使用同一套私人任務及登入 Session。GET 可使用 `title
 
 錯誤回傳 JSON `error`，欄位驗證錯誤可附上 `fields`。常見狀態包括 `400` 輸入或 ID 無效、`401` 未登入、`403` CSRF token 不符、`404` 任務不存在或不屬於自己、`500` 伺服器錯誤。
 
-可直接執行 `bash scripts/demo.sh`，按提示輸入測試密碼，依次示範新增、篩選、修改及刪除。以下是相同流程的 cURL 指令，可逐段執行。
-
-先讀取登入頁的 CSRF token，提交登入表單後保存新 Cookie。登入會更新 Session，因此再從 `/tasks` 讀取 API 寫入所需的 token。
-
-```bash
-BASE_URL=http://localhost:3000
-COOKIE_JAR=$(mktemp)
-read -r -s -p 'student1 password: ' DEMO_PASSWORD
-printf '\n'
-
-LOGIN_TOKEN=$(curl -fsS -c "$COOKIE_JAR" "$BASE_URL/login" |
-  sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' | head -n 1)
-
-curl -fsS -o /dev/null -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
-  --data-urlencode "username=student1" \
-  --data-urlencode "password=$DEMO_PASSWORD" \
-  --data-urlencode "_csrf=$LOGIN_TOKEN" "$BASE_URL/login"
-unset DEMO_PASSWORD
-
-CSRF_TOKEN=$(curl -fsS -b "$COOKIE_JAR" "$BASE_URL/tasks" |
-  sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' | head -n 1)
-```
-
-新增任務並從回應保存 `_id`：
-
-```bash
-TASK=$(curl -fsS -b "$COOKIE_JAR" \
-  -H "X-CSRF-Token: $CSRF_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"title":"cURL demo task"}' \
-  "$BASE_URL/api/tasks")
-printf '%s\n' "$TASK"
-TASK_ID=$(printf '%s\n' "$TASK" | sed -n 's/.*"_id":"\([0-9a-f]\{24\}\)".*/\1/p')
-```
-
-讀取、修改及刪除剛才的示範任務：
-
-```bash
-curl -fsS -G -b "$COOKIE_JAR" \
-  --data-urlencode 'title=cURL demo task' \
-  --data-urlencode 'status=In Progress' \
-  "$BASE_URL/api/tasks"
-
-curl -fsS -X PUT -b "$COOKIE_JAR" \
-  -H "X-CSRF-Token: $CSRF_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"status":"Completed"}' "$BASE_URL/api/tasks/$TASK_ID"
-
-curl -fsS -X DELETE -b "$COOKIE_JAR" \
-  -H "X-CSRF-Token: $CSRF_TOKEN" "$BASE_URL/api/tasks/$TASK_ID"
-
-curl -fsS -o /dev/null -b "$COOKIE_JAR" \
-  --data-urlencode "_csrf=$CSRF_TOKEN" "$BASE_URL/logout"
-rm -f "$COOKIE_JAR"
-```
-
 ## 驗收清單
 
 | 測試 | 預期結果 |
@@ -195,23 +134,19 @@ rm -f "$COOKIE_JAR"
 | 新增、搜尋、編輯、完成、重新開啟及刪除任務 | 列表按標題搜尋，完成和重新開啟會保留搜尋條件，取消刪除會保留任務 |
 | 空白或過長標題、無效日期、錯誤狀態 | 顯示錯誤，資料不會被儲存 |
 | 標題含 `<`、`>` 或 `&` | 顯示為文字 |
-| 使用 `student2` 查看 `student1` 的任務或提交其 ID | 列表看不到他人資料，直接操作回傳 404 |
+| 使用自行註冊的第二個帳號查看第一個帳號的任務或提交其 ID | 列表看不到他人資料，直接操作回傳 404 |
 | 任務截止日期 | 截止日已過且尚未完成的任務顯示逾期 |
-| 執行 cURL 示範 | POST、GET、PUT、DELETE 依序回傳 201、200、200、200 |
-| 重複 seed，停止並重建容器 | 已有帳號與任務保留 |
+| 停止並重建容器 | 已有帳號與任務保留 |
 | Chrome、Edge，375px／1366px 寬度 | 表單和任務操作可用，鍵盤能切換並操作按鈕 |
 
-驗收記錄（2026 年 11 月 11 日）：在 WSL 的 Docker Compose 環境實測登入、網頁與 API CRUD、兩個帳號的資料隔離，以及重建容器後保留資料。cURL 示範回傳 201、200、200、200。Chrome 和 Edge 均完成鍵盤登入及 375px／1366px 版面檢查。
+驗收記錄（2026 年 11 月 11 日）：在 WSL 的 Docker Compose 環境實測登入、網頁與 API CRUD、兩個帳號的資料隔離，以及重建容器後保留資料。Chrome 和 Edge 均完成鍵盤登入及 375px／1366px 版面檢查。
 
 This verification was performed before the switch to Atlas.
 
-## 展示及提交
-
-10 分鐘展示可分為 1 分鐘介紹項目、組別及分工，1 分鐘啟動網站，5 分鐘展示登入、任務 CRUD、搜尋及登出，3 分鐘執行已準備的 cURL 指令。
+## 提交
 
 | 香港時間 | 工作 |
 | --- | --- |
-| 2026 年 11 月 16 日 23:59 前 | 按課程安排登記展示時段 |
 | 2026 年 11 月 29 日 | 完成測試、核對 README 及打包 |
 | 2026 年 11 月 30 日 23:59 前 | 由組員在 OLE > Assignment > Group Project 提交 |
 

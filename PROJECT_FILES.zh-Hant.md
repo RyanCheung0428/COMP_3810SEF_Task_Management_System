@@ -16,7 +16,7 @@ TaskFlow 讓使用者登入後在 Tasks 頁管理自己的任務。Express 接�
 
 | 檔案 | 用途 |
 | --- | --- |
-| [`models/User.js`](./models/User.js) | 定義帳戶的使用者名稱、密碼雜湊值和建立時間。`server.js` 透過此模型註冊和查詢帳戶，`seed.js` 用它建立示範帳戶。使用者名稱有唯一索引，登入路由會明確讀取預設隱藏的密碼雜湊值。 |
+| [`models/User.js`](./models/User.js) | 定義帳戶的使用者名稱、密碼雜湊值和建立時間。`server.js` 透過此模型註冊和查詢帳戶。使用者名稱有唯一索引，登入路由會明確讀取預設隱藏的密碼雜湊值。 |
 | [`models/Task.js`](./models/Task.js) | 定義任務欄位、預設值、驗證規則和時間戳記。`userId` 記錄任務的擁有者，建立後固定。任務路由透過此模型讀寫資料。`userId` 與 `createdAt` 的複合索引支援按帳戶查詢及由新至舊排序。 |
 | [`task-input.js`](./task-input.js) | 為網頁路由及 API 提供共用的任務預設值和兩種狀態。`validateTask` 整理和驗證可編輯欄位，例如將有效的 `YYYY-MM-DD` 截止日期轉成 UTC 午夜的日期值。`readTaskFilters` 驗證搜尋輸入，網頁按標題搜尋，API 可同時按標題和狀態篩選。 |
 
@@ -38,21 +38,19 @@ TaskFlow 讓使用者登入後在 Tasks 頁管理自己的任務。Express 接�
 
 | 檔案 | 用途 |
 | --- | --- |
-| [`package.json`](./package.json) | 宣告專案的 Node.js 版本要求及 Express、Mongoose、EJS 等相依套件。`npm start` 會執行 `server.js`，`npm run seed` 會執行 `seed.js`。 |
+| [`package.json`](./package.json) | 宣告專案的 Node.js 版本要求及 Express、Mongoose、EJS 等相依套件。`npm start` 會執行 `server.js`。 |
 | [`package-lock.json`](./package-lock.json) | 記錄直接及間接相依套件的確切版本、下載來源和完整性資料。Docker 建置時用 `npm ci` 按這份清單安裝套件。 |
 | [`Dockerfile`](./Dockerfile) | 定義如何建置應用程式映像檔。它採用 `node:24-bookworm-slim`，用 `npm ci --omit=dev` 安裝套件，複製專案檔案，並以低權限的 `node` 使用者執行 `npm start`。 |
 | [`compose.yaml`](./compose.yaml) | 定義 Docker Compose 的 `app` 服務。它指定映像檔的建置位置，把環境變數傳入容器，並將主機 `127.0.0.1` 的指定連接埠對應到容器內的 `3000`。 |
 | [`.env.example`](./.env.example) | 提供環境變數的名稱、註解和預設值。首次設定時，以這份範本建立 `.env`，填妥 Atlas 連線和其他執行設定，供 Docker Compose 載入。 |
 | [`.dockerignore`](./.dockerignore) | 指定 Docker 建置時排除的項目，例如 `.env`、`.env.*`、本機 `node_modules` 和 `.git`。`Dockerfile` 執行 `COPY` 時只會取得建置內容中的檔案。 |
-| [`.gitignore`](./.gitignore) | 定義 Git 對本機設定、套件資料夾及示範產生的部分檔案的忽略規則。`.env.example` 有例外規則，讓環境變數範本可納入版本控制。 |
+| [`.gitignore`](./.gitignore) | 定義 Git 對本機設定、套件資料夾及部分本機產生的檔案的忽略規則。`.env.example` 有例外規則，讓環境變數範本可納入版本控制。 |
 
-### 操作指引與示範
+### 操作指引與遷移
 
 | 檔案 | 用途 |
 | --- | --- |
 | [`README.md`](./README.md) | 專案的主要使用指引，記錄小組分工、Atlas 和 Docker 設定、網頁操作、REST API、驗收清單及提交安排。 |
-| [`seed.js`](./seed.js) | 由 `npm run seed` 執行。它使用 `MONGODB_URI` 連接資料庫，將 `DEMO_PASSWORD` 雜湊後，只建立尚未存在的 `student1` 和 `student2` 示範帳戶。 |
-| [`scripts/demo.sh`](./scripts/demo.sh) | 網站啟動後可執行的 cURL 示範。腳本以 `student1` 登入，保存 Cookie 並取得 CSRF token，再依次新增、篩選、更新及刪除示範任務，檢查每一步的 HTTP 狀態碼，最後登出並清理暫存檔。 |
 | [`scripts/migrate-task-fields.js`](./scripts/migrate-task-fields.js) | 升級既有 MongoDB 任務資料。移除舊 Priority 和 Category 欄位，將舊的未完成狀態統一為 `In Progress`，並檢查待遷移的任務數。 |
 
 ## 三個請求流程
@@ -75,7 +73,7 @@ TaskFlow 讓使用者登入後在 Tasks 頁管理自己的任務。Express 接�
 2. `routes/api.js` 檢查任務 ID 的格式，再使用 `validateTask(req.body, true)` 驗證提交的欄位。它透過 `models/Task.js` 同時按任務 ID 和 Session 的使用者 ID 尋找任務，並更新已提交且可編輯的欄位。
 3. 更新成功時，API 回傳 `200` 及更新後的任務 JSON。無效 ID 或欄位回傳 `400`，找不到屬於該帳戶的指定任務則回傳 `404`。
 
-## Docker 啟動與示範
+## Docker 啟動
 
 以 `.env.example` 建立 `.env` 後，Docker Compose 會使用其中的變數，並依 `compose.yaml` 把應用程式所需的設定傳入 `app` 容器。
 
@@ -84,10 +82,8 @@ TaskFlow 讓使用者登入後在 Tasks 頁管理自己的任務。Express 接�
 | `PORT` | 瀏覽器連線的主機連接埠，預設為 `3000`。容器內的應用程式固定使用 `3000`。 |
 | `MONGODB_URI` | MongoDB Atlas 連線字串。按 `README.md` 的設定，在連線字串中指定 `taskflow` 資料庫，用來存放帳戶、任務和 Session。 |
 | `SESSION_SECRET` | 用來簽署 Session Cookie 的密鑰。`server.js` 要求填入 64 個十六進制字元，可用 `openssl rand -hex 32` 產生。 |
-| `DEMO_PASSWORD` | 初始化示範帳戶時使用的密碼。`seed.js` 要求去除首尾空格後至少 8 個字元，原始值最多 72 位元組。 |
-| `COOKIE_SECURE` | 本機 HTTP 示範用 `false`。設為 `true` 時，Session Cookie 只會透過 HTTPS 傳送。 |
+| `COOKIE_SECURE` | 本機 HTTP 使用 `false`。設為 `true` 時，Session Cookie 只會透過 HTTPS 傳送。 |
 | `TRUST_PROXY` | 預設為 `false`。在單一受信任的反向代理後方運行時可設為 `true`。 |
 
 1. 執行 `docker compose up --build -d`。Compose 按 `Dockerfile` 建置並啟動 `app`，容器中的 `npm start` 會執行 `server.js`，連接 Atlas 後才開始接收網頁請求。
-2. 如需建立示範帳戶，執行 `docker compose exec app npm run seed`。`seed.js` 會使用容器內的資料庫和示範密碼設定。
-3. 在主機執行 `bash scripts/demo.sh` 可展示 API 操作。腳本預設連到 `http://localhost:3000`，可用 `TASKFLOW_URL` 指定其他網址。若目前 shell 未提供 `DEMO_PASSWORD`，腳本會提示輸入 `student1` 的密碼。
+2. 開啟 `/register` 建立帳號，或使用已遷移的帳號登入。
