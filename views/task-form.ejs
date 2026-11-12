@@ -1,18 +1,24 @@
-<%# Add and edit use the same form. The server supplies its heading, values, and submission URL. -%>
+<%#
+  Add and edit use the same form. The server supplies its heading, values, and submission URL.
+-%>
 <%- include('partials/header', { title: heading, page: 'tasks' }) %>
 <section class="panel form-panel">
   <h1><%= heading %></h1>
   <% if (errors._form) { %>
     <p class="notice notice-error" role="alert"><%= errors._form %></p>
   <% } %>
-  <%# Send a form token so the server can check it against the current session. -%>
+  <%#
+    Send a form token so the server can check it against the current session.
+  -%>
   <form method="post" action="<%= action %>" class="stack">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div>
       <label for="title">Title</label>
       <input id="title" name="title" value="<%= task.title %>" maxlength="120" required
         <% if (errors.title) { %> aria-invalid="true" aria-describedby="title-error"<% } %>>
-      <%# Show the server's validation error next to its field. -%>
+      <%#
+        Show the server's validation error next to its field.
+      -%>
       <% if (errors.title) { %>
         <p class="field-error" id="title-error"><%= errors.title %></p>
       <% } %>
@@ -30,7 +36,9 @@
         <label for="status">Status</label>
         <select id="status" name="status" required
           <% if (errors.status) { %> aria-invalid="true" aria-describedby="status-error"<% } %>>
-          <%# Use the server's list of statuses and keep the chosen value selected. -%>
+          <%#
+            Use the server's list of statuses and keep the chosen value selected.
+          -%>
           <% for (const status of statuses) { %>
             <option value="<%= status %>"<% if ((task.status || 'Pending') === status) { %> selected<% } %>><%= status %></option>
           <% } %>
@@ -62,7 +70,9 @@
         <% } %>
       </div>
       <div>
-        <%# Format the date as YYYY-MM-DD for the date input. -%>
+        <%#
+          Format the date as YYYY-MM-DD for the date input.
+        -%>
         <label for="dueDate">Due date <span class="optional">(optional)</span></label>
         <input id="dueDate" name="dueDate" type="date" value="<%= displayDate(task.dueDate) %>"
           <% if (errors.dueDate) { %> aria-invalid="true" aria-describedby="dueDate-error"<% } %>>

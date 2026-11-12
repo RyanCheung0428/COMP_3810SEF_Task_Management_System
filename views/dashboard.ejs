@@ -1,4 +1,6 @@
-<%# Show the task counts and completion rate the server calculated for this user. -%>
+<%#
+  Show the task counts and completion rate the server calculated for this user.
+-%>
 <%- include('partials/header', { title: 'Dashboard', page: 'dashboard' }) %>
 <div class="page-heading">
   <h1>Dashboard</h1>
@@ -10,7 +12,9 @@
   <div class="panel"><dt>In progress</dt><dd><%= stats.inProgress %></dd></div>
   <div class="panel"><dt>Completed</dt><dd><%= stats.completed %></dd></div>
 </dl>
-<%# The heading labels the progress bar, which runs from 0 to 100 percent. -%>
+<%#
+  The heading labels the progress bar, which runs from 0 to 100 percent.
+-%>
 <section class="panel">
   <h2 id="completion-label">Completion rate: <%= stats.percentage %>%</h2>
   <progress aria-labelledby="completion-label" value="<%= stats.percentage %>" max="100"><%= stats.percentage %>%</progress>

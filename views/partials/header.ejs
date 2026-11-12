@@ -1,4 +1,6 @@
-<%# Set the page title, load shared assets, and open the main content area. -%>
+<%#
+  Set the page title, load shared assets, and open the main content area.
+-%>
 <!doctype html>
 <html lang="en">
 <head>
@@ -9,12 +11,16 @@
   <script src="/forms.js" defer></script>
 </head>
 <body data-signed-in="<%= signedIn ? 'yes' : 'no' %>">
-  <%# Let keyboard users jump straight to the main content. -%>
+  <%#
+    Let keyboard users jump straight to the main content.
+  -%>
   <a class="skip-link" href="#main-content">Skip to content</a>
   <header class="site-header">
     <div class="container header-inner">
       <a class="brand" href="<%= signedIn ? '/tasks' : '/login' %>">TaskFlow</a>
-      <%# Show task navigation and the logout form only to signed-in users. -%>
+      <%#
+        Show task navigation and the logout form only to signed-in users.
+      -%>
       <% if (signedIn) { %>
         <nav aria-label="Main navigation">
           <a href="/tasks"<% if (page === 'tasks') { %> aria-current="page"<% } %>>Tasks</a>
