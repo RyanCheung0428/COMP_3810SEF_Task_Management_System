@@ -1,67 +1,44 @@
 <%- include('partials/header', { title: 'Tasks' }) %>
-<% const formQuery = view ? '?view=completed' : ''; %>
-<div class="page-heading">
-  <a class="button" href="/tasks/new<%= formQuery %>">Add task</a>
-</div>
-
-<nav class="stats" aria-label="Task status">
-  <a class="panel stat" href="/tasks"<% if (!view) { %> aria-current="page"<% } %>>
-    <span>In progress</span>
-    <strong><%= stats.inProgress %></strong>
-  </a>
-  <a class="panel stat" href="/tasks?view=completed"<% if (view) { %> aria-current="page"<% } %>>
-    <span>Completed</span>
-    <strong><%= stats.completed %></strong>
-  </a>
-</nav>
-
-<% if (message) { %>
-  <p class="notice notice-success" role="status"><%= message %></p>
-<% } %>
-
-<% if (!tasks.length) { %>
-  <div class="panel empty">
-    <h2><%= view ? 'No completed tasks yet' : 'No unfinished tasks' %></h2>
+<% const viewQuery = completed ? '?view=completed' : ''; %>
+<div id="task-page" data-view="<%= completed ? 'completed' : '' %>">
+  <div class="page-heading">
+    <a class="button" href="/tasks/new<%= viewQuery %>">Add task</a>
   </div>
-<% } else { %>
-  <ul class="panel task-list">
-    <% for (const task of tasks) { %>
-      <% const isCompleted = task.status === 'Completed'; %>
-      <li class="task">
-        <form method="post" action="/tasks/<%= task._id %>/<%= isCompleted ? 'reopen' : 'complete' %>">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <input type="hidden" name="view" value="<%= view %>">
-          <button class="task-control task-toggle" type="submit" aria-label="<%= isCompleted ? 'Reopen' : 'Complete' %> <%= task.title %>"
-            title="<%= isCompleted ? 'Reopen task' : 'Complete task' %>">
-            <span class="task-check<%= isCompleted ? ' is-checked' : '' %>" aria-hidden="true"><%= isCompleted ? '✓' : '' %></span>
-          </button>
-        </form>
-        <div class="task-content">
-          <h2><%= task.title %></h2>
-          <% if (task.description) { %>
-            <p class="description"><%= task.description %></p>
-          <% } %>
-          <% if (task.dueDate) { %>
-            <p class="task-date">
-              Due <time datetime="<%= displayDate(task.dueDate) %>"><%= displayDate(task.dueDate) %></time>
-              <% if (isOverdue(task)) { %><span class="overdue">Overdue</span><% } %>
-            </p>
-          <% } %>
-        </div>
-        <details class="task-options">
-          <summary class="task-control" aria-label="Actions for <%= task.title %>"><span aria-hidden="true">⋯</span></summary>
-          <div class="task-options-panel">
-            <a href="/tasks/<%= task._id %>/edit<%= formQuery %>">Edit</a>
-            <form method="post" action="/tasks/<%= task._id %>/delete" data-confirm="Delete this task?">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <input type="hidden" name="view" value="<%= view %>">
-              <button class="delete-task" type="submit">Delete</button>
-            </form>
-          </div>
-        </details>
-      </li>
-    <% } %>
-  </ul>
-<% } %>
-
+  <nav class="stats" aria-label="Task status">
+    <a class="panel stat" href="/tasks"<% if (!completed) { %> aria-current="page"<% } %>>
+      <span>In progress</span>
+      <strong id="unfinished-count"></strong>
+    </a>
+    <a class="panel stat" href="/tasks?view=completed"<% if (completed) { %> aria-current="page"<% } %>>
+      <span>Completed</span>
+      <strong id="completed-count"></strong>
+    </a>
+  </nav>
+  <p class="notice notice-success" role="status" hidden></p>
+  <div class="panel empty" hidden>
+    <h2><%= completed ? 'No completed tasks yet' : 'No unfinished tasks' %></h2>
+  </div>
+  <ul class="panel task-list" hidden></ul>
+</div>
+<template id="task-row">
+  <li class="task">
+    <button class="task-control" type="button" data-task-action="toggle">
+      <span class="task-check" aria-hidden="true"></span>
+    </button>
+    <div class="task-content">
+      <h2></h2>
+      <p class="description" hidden></p>
+      <p class="task-date" hidden>
+        Due <time></time> <span class="overdue" hidden>Overdue</span>
+      </p>
+    </div>
+    <details class="task-options">
+      <summary class="task-control"><span aria-hidden="true">⋯</span></summary>
+      <div class="task-options-panel">
+        <a href="#">Edit</a>
+        <button class="delete-task" type="button" data-task-action="delete">Delete</button>
+      </div>
+    </details>
+  </li>
+</template>
 <%- include('partials/footer') %>

@@ -1,14 +1,7 @@
-<%#
-  Show the status and message from the server, with a return link based on login state.
--%>
-<%- include('partials/header', { title: 'Error ' + status, page: '' }) %>
+<%- include('partials/header', { title: 'Error ' + status }) %>
 <section class="panel narrow">
   <h1>Error <%= status %></h1>
   <p><%= message %></p>
-  <% if (signedIn) { %>
-    <a class="button" href="/tasks">Back to tasks</a>
-  <% } else { %>
-    <a class="button" href="/login">Go to login</a>
-  <% } %>
+  <a class="button" href="/">Back to TaskFlow</a>
 </section>
 <%- include('partials/footer') %>

@@ -67,9 +67,9 @@ function validateTask(input, { partial = false, allowStatus = true } = {}) {
   return { task, errors };
 }
 
-// Return the form values, MongoDB query conditions and any validation errors.
-function readTaskFilters(input, { allowStatus = true } = {}) {
-  const filters = allowStatus ? { title: '', status: '' } : { title: '' };
+// Return the MongoDB query conditions and any validation errors.
+function readTaskFilters(input) {
+  const filters = { title: '', status: '' };
   const query = {};
   const errors = {};
 
@@ -96,7 +96,7 @@ function readTaskFilters(input, { allowStatus = true } = {}) {
     else errors.status = 'Choose a valid status.';
   }
 
-  return { filters, query, errors };
+  return { query, errors };
 }
 
 module.exports = { emptyTask, inProgress, completed, statuses, validateTask, readTaskFilters };

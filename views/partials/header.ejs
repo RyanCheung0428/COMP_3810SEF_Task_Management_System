@@ -1,6 +1,3 @@
-<%#
-  Set the page title, load shared assets, and open the main content area.
--%>
 <!doctype html>
 <html lang="en">
 <head>
@@ -10,25 +7,18 @@
   <link rel="stylesheet" href="/styles.css">
   <script src="/forms.js" defer></script>
 </head>
-<body data-signed-in="<%= signedIn ? 'yes' : 'no' %>">
-  <%#
-    Let keyboard users jump straight to the main content.
-  -%>
+<body>
   <a class="skip-link" href="#main-content">Skip to content</a>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="<%= signedIn ? '/tasks' : '/login' %>">TaskFlow</a>
-      <%#
-        Show the logout form only to signed-in users.
-      -%>
-      <% if (signedIn) { %>
-        <nav aria-label="Main navigation">
-          <form method="post" action="/logout">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button class="button button-secondary" type="submit">Log out</button>
-          </form>
-        </nav>
-      <% } %>
+      <a class="brand" href="/">TaskFlow</a>
+      <nav aria-label="Main navigation" id="account-nav" hidden>
+        <form method="post" action="/api/auth/logout" data-auth="logout">
+          <button class="button button-secondary" type="submit">Log out</button>
+        </form>
+      </nav>
     </div>
   </header>
   <main id="main-content" class="container" tabindex="-1">
+    <p class="notice notice-error" id="request-error" role="alert" hidden></p>
+    <noscript>Enable JavaScript to sign in and manage tasks.</noscript>

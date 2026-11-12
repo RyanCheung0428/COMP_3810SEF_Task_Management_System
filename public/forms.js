@@ -1,39 +1,244 @@
-// Handle POST forms for login, logout, and task changes.
-document.addEventListener('submit', (event) => {
-  const form = event.target;
-  if (form.method !== 'post') return;
-  if (form.dataset.submitting) {
+const messageKey = 'taskflow.message';
+const requestError = document.querySelector('#request-error');
+const taskPage = document.querySelector('#task-page');
+const taskForm = document.querySelector('#task-form');
+const guestForm = document.querySelector('[data-auth="login"], [data-auth="register"]');
+const logoutForm = document.querySelector('[data-auth="logout"]');
+const hongKongDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Hong_Kong' });
+
+function showMessage(element, message) {
+  element.textContent = message;
+  element.hidden = !message;
+}
+
+function consumeMessage() {
+  const message = sessionStorage.getItem(messageKey) || '';
+  sessionStorage.removeItem(messageKey);
+  return message;
+}
+
+function signOut() {
+  sessionStorage.removeItem(messageKey);
+  window.location.replace('/login');
+}
+
+let csrfRequest;
+
+async function getCsrfToken() {
+  csrfRequest ??= fetch('/api/auth/csrf', { credentials: 'same-origin' })
+    .then(async (response) => {
+      if (!response.ok) throw new Error('Could not prepare the form. Please try again.');
+      const { csrfToken } = await response.json();
+      return csrfToken;
+    })
+    .catch((error) => {
+      csrfRequest = undefined;
+      throw error;
+    });
+  return csrfRequest;
+}
+
+async function request(url, { method = 'GET', body, authenticated = true } = {}) {
+  const headers = {};
+  if (method !== 'GET') headers['X-CSRF-Token'] = await getCsrfToken();
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+  const response = await fetch(url, {
+    method, headers, credentials: 'same-origin', body: JSON.stringify(body)
+  });
+  if (response.status === 403) csrfRequest = undefined;
+  if (authenticated && response.status === 401) {
+    signOut();
+    return;
+  }
+  if (response.status === 204) return true;
+
+  const data = await response.json();
+  if (!response.ok) {
+    const error = new Error(data.error || 'Something went wrong. Please try again.');
+    error.fields = data.fields;
+    throw error;
+  }
+  return data;
+}
+
+function handleForm(form, onSubmit, onError) {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    return;
+    if (form.dataset.submitting) return;
+    form.dataset.submitting = 'true';
+    if (event.submitter) event.submitter.disabled = true;
+    try {
+      await onSubmit();
+    } catch (error) {
+      onError(error);
+    } finally {
+      delete form.dataset.submitting;
+      if (event.submitter) event.submitter.disabled = false;
+    }
+  });
+}
+
+function initializeGuestForm(form) {
+  const status = document.querySelector('.narrow [role="status"]');
+  const errorNotice = document.querySelector('.narrow [role="alert"]');
+  if (status) showMessage(status, consumeMessage());
+
+  handleForm(form, async () => {
+    showMessage(errorNotice, '');
+    const body = Object.fromEntries(new FormData(form));
+    const result = await request(form.action, { method: 'POST', body, authenticated: false });
+    if (form.dataset.auth === 'register') {
+      sessionStorage.setItem(messageKey, result.message);
+      window.location.assign('/login');
+      return;
+    }
+    window.location.replace('/tasks');
+  }, (error) => showMessage(errorNotice, error.message));
+}
+
+function listUrl(view) {
+  return view === 'completed' ? '/tasks?view=completed' : '/tasks';
+}
+
+function taskApi(id) {
+  return '/api/tasks' + (id ? '/' + encodeURIComponent(id) : '');
+}
+
+function buildTaskRow(task, view, today) {
+  const row = document.querySelector('#task-row').content.firstElementChild.cloneNode(true);
+  const completed = task.status === 'Completed';
+  row.dataset.taskId = task._id;
+  row.dataset.status = task.status;
+  row.querySelector('h2').textContent = task.title;
+  showMessage(row.querySelector('.description'), task.description || '');
+
+  const toggle = row.querySelector('[data-task-action="toggle"]');
+  const action = completed ? 'Reopen task' : 'Complete task';
+  toggle.title = action;
+  toggle.setAttribute('aria-label', action + ': ' + task.title);
+  const check = toggle.querySelector('.task-check');
+  check.classList.toggle('is-checked', completed);
+  check.textContent = completed ? '✓' : '';
+
+  if (task.dueDate) {
+    const date = task.dueDate.slice(0, 10);
+    const time = row.querySelector('time');
+    time.dateTime = date;
+    time.textContent = date;
+    row.querySelector('.task-date').hidden = false;
+    row.querySelector('.overdue').hidden = completed || date >= today;
   }
 
-  // Ask for confirmation when the form has a data-confirm message.
-  if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) {
-    event.preventDefault();
-    return;
-  }
+  row.querySelector('summary').setAttribute('aria-label', 'Actions for ' + task.title);
+  row.querySelector('.task-options-panel a').href =
+    '/tasks/' + encodeURIComponent(task._id) + '/edit' + (view ? '?view=completed' : '');
+  return row;
+}
 
-  // Mark the form as submitting and disable the button to prevent a second submission.
-  form.dataset.submitting = 'true';
-  if (event.submitter) {
-    event.submitter.disabled = true;
-  }
-});
+async function loadTaskList(page) {
+  const tasks = await request('/api/tasks');
+  if (!tasks) return;
+  const completed = tasks.filter((task) => task.status === 'Completed');
+  const unfinished = tasks.filter((task) => task.status !== 'Completed');
+  const visible = page.dataset.view === 'completed' ? completed : unfinished;
+  const list = page.querySelector('.task-list');
+  const today = hongKongDate.format(new Date());
+  page.querySelector('#completed-count').textContent = completed.length;
+  page.querySelector('#unfinished-count').textContent = unfinished.length;
+  const rows = document.createDocumentFragment();
+  for (const task of visible) rows.append(buildTaskRow(task, page.dataset.view, today));
+  list.replaceChildren(rows);
+  list.hidden = !visible.length;
+  page.querySelector('.empty').hidden = Boolean(visible.length);
+}
 
-// Reload a protected page restored by Back so the server checks the session again.
-window.addEventListener('pageshow', (event) => {
-  if (event.persisted && document.body.dataset.signedIn === 'yes') {
-    window.location.reload();
-    return;
-  }
+function initializeTaskList(page) {
+  const notice = page.querySelector('[role="status"]');
+  showMessage(notice, consumeMessage());
+  let updating = false;
+  page.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-task-action]');
+    if (!button || updating) return;
+    const row = button.closest('[data-task-id]');
+    const deleting = button.dataset.taskAction === 'delete';
+    if (deleting && !window.confirm('Delete this task?')) return;
 
-  // Reset restored forms so users can submit them again.
-  for (const form of document.querySelectorAll('form[data-submitting]')) {
-    delete form.dataset.submitting;
-    for (const button of form.querySelectorAll('button[type="submit"]')) {
+    updating = true;
+    button.disabled = true;
+    showMessage(requestError, '');
+    showMessage(notice, '');
+    try {
+      const status = row.dataset.status === 'Completed' ? 'In Progress' : 'Completed';
+      const result = await request(taskApi(row.dataset.taskId), deleting
+        ? { method: 'DELETE' }
+        : { method: 'PUT', body: { status } });
+      if (!result) return;
+      showMessage(notice, deleting ? result.message
+        : status === 'Completed' ? 'Task completed.' : 'Task reopened.');
+      await loadTaskList(page);
+    } catch (error) {
+      showMessage(requestError, error.message);
+    } finally {
+      updating = false;
       button.disabled = false;
     }
+  });
+  return loadTaskList(page);
+}
+
+function showFieldErrors(form, errors = {}) {
+  for (const input of form.querySelectorAll('[aria-describedby]')) {
+    const message = errors[input.name] || '';
+    if (message) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+    showMessage(document.getElementById(input.getAttribute('aria-describedby')), message);
   }
+}
+
+async function initializeTaskForm(form) {
+  const id = form.dataset.taskId;
+  if (id) {
+    const task = await request(taskApi(id));
+    if (!task) return;
+    form.elements.title.value = task.title;
+    form.elements.description.value = task.description || '';
+    form.elements.dueDate.value = task.dueDate?.slice(0, 10) || '';
+  }
+  form.querySelector('fieldset').disabled = false;
+  handleForm(form, async () => {
+    showMessage(requestError, '');
+    showFieldErrors(form);
+    const body = Object.fromEntries(new FormData(form));
+    const result = await request(taskApi(id), { method: id ? 'PUT' : 'POST', body });
+    if (!result) return;
+    sessionStorage.setItem(messageKey, id ? 'Task updated.' : 'Task added.');
+    window.location.assign(listUrl(form.dataset.view));
+  }, (error) => {
+    showMessage(requestError, error.fields?._form || error.message);
+    showFieldErrors(form, error.fields);
+  });
+}
+
+async function initialize() {
+  if (guestForm) {
+    initializeGuestForm(guestForm);
+    return;
+  }
+  if (!taskPage && !taskForm) return;
+
+  document.querySelector('#account-nav').hidden = false;
+  document.querySelector('.brand').href = '/tasks';
+  handleForm(logoutForm, async () => {
+    if (await request(logoutForm.action, { method: 'POST' })) signOut();
+  }, (error) => showMessage(requestError, error.message));
+
+  if (taskPage) await initializeTaskList(taskPage);
+  if (taskForm) await initializeTaskForm(taskForm);
+}
+
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) window.location.reload();
 });
 
 document.addEventListener('click', (event) => {
@@ -49,3 +254,5 @@ document.addEventListener('keydown', (event) => {
   options.open = false;
   options.querySelector('summary').focus();
 });
+
+initialize().catch((error) => showMessage(requestError, error.message));

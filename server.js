@@ -1,77 +1,22 @@
-// Start the Express server and handle login, sessions, and shared request checks.
+// Start Express and mount the page and REST routes.
 const path = require('node:path');
-const { randomBytes } = require('node:crypto');
 const express = require('express');
 const session = require('express-session');
 const { MongoStore } = require('connect-mongo');
-const bcrypt = require('bcryptjs');
+const passport = require('passport');
 const mongoose = require('mongoose');
-
 const User = require('./models/User');
+const auth = require('./routes/auth');
 const taskRoutes = require('./routes/tasks');
 const apiRoutes = require('./routes/api');
 
-const cookieName = 'taskflow.sid';
-// Browser JavaScript cannot read this cookie. Enable Secure when the site uses HTTPS.
-const cookieOptions = {
-  httpOnly: true,
-  sameSite: 'lax',
-  secure: process.env.COOKIE_SECURE === 'true'
-};
-// The sv-SE locale formats the day as YYYY-MM-DD, which sorts by calendar date.
-const hongKongDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Hong_Kong' });
-
-// Identify API URLs so the server can choose the correct response format.
-function isApi(req) {
-  return /^\/api(?:[/?]|$)/i.test(req.originalUrl);
-}
-
-// API clients receive JSON errors, and browser pages use the EJS error template.
 function showError(req, res, status, message) {
-  if (isApi(req)) {
+  if (/^\/api(?:[/?]|$)/i.test(req.originalUrl)) {
     return res.status(status).json({ error: message });
   }
   return res.status(status).render('error', { status, message });
 }
 
-// Stop requests without a signed-in session before they reach task routes.
-function requireLogin(req, res, next) {
-  if (req.session.userId) return next();
-  if (isApi(req)) return showError(req, res, 401, 'Please sign in first.');
-  return res.redirect('/login');
-}
-
-// For write requests, check that the form or API token belongs to this session.
-function requireCsrf(req, res, next) {
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-  const token = isApi(req) ? req.get('X-CSRF-Token') : req.body?._csrf;
-  if (req.session.csrfToken && token === req.session.csrfToken) return next();
-  return showError(req, res, 403, 'Invalid form token. Reload the page and try again.');
-}
-
-// Prepare a CSRF token for visitors opening the login or registration form.
-function prepareGuestForm(req, res, next) {
-  if (req.session.userId) return res.redirect('/tasks');
-  if (!req.session.csrfToken) req.session.csrfToken = randomBytes(32).toString('hex');
-  res.locals.csrfToken = req.session.csrfToken;
-  next();
-}
-
-// Display the stored due date as YYYY-MM-DD without shifting the calendar day.
-function displayDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 10);
-}
-
-// A task is overdue when it is incomplete and its due date is before today in Hong Kong.
-function isOverdue(task) {
-  const due = displayDate(task.dueDate);
-  return Boolean(due && task.status !== 'Completed' && due < hongKongDate.format(new Date()));
-}
-
-// Validate the environment settings before connecting to MongoDB and opening the web port.
 async function start() {
   if (!process.env.MONGODB_URI) throw new Error('Set the Atlas connection string in MONGODB_URI.');
   if (!/^[a-f0-9]{64}$/i.test(process.env.SESSION_SECRET || '')) {
@@ -90,30 +35,21 @@ async function start() {
   try {
     await User.init();
   } catch {
-    throw new Error('Could not initialize the users collection and its unique username index.');
+    throw new Error('Could not initialize the unique username index.');
   }
 
   const app = express();
   app.disable('x-powered-by');
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'views'));
-  if (process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
-  app.locals.displayDate = displayDate;
-  app.locals.isOverdue = isOverdue;
-
-  // Parse the URL-encoded fields sent by the HTML forms.
-  const form = express.urlencoded({ extended: false, limit: '16kb' });
   app.use(express.static(path.join(__dirname, 'public')));
-  // Tell browsers not to cache dynamic pages containing private task or session data.
   app.use((req, res, next) => {
     res.set('Cache-Control', 'no-store');
-    res.locals.signedIn = false;
-    res.locals.csrfToken = '';
     next();
   });
-  // The browser stores a signed session ID. The session data lives in MongoDB.
+  if (process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
   app.use(session({
-    name: cookieName,
+    name: auth.cookieName,
     secret: process.env.SESSION_SECRET,
     store: MongoStore.create({
       client: mongoose.connection.getClient(),
@@ -121,103 +57,34 @@ async function start() {
     }),
     resave: false,
     saveUninitialized: false,
-    cookie: { ...cookieOptions, maxAge: 2 * 60 * 60 * 1000 }
+    cookie: { ...auth.cookieOptions, maxAge: auth.sessionLifetime }
   }));
-  // Make the login state and form token available to all EJS templates.
-  app.use((req, res, next) => {
-    res.locals.signedIn = Boolean(req.session.userId);
-    res.locals.csrfToken = req.session.csrfToken || '';
-    next();
-  });
+  app.use(passport.initialize());
+  app.use(passport.session());
 
-  // Send visitors to the right page based on whether they are already signed in.
-  app.get('/', (req, res) => res.redirect(req.session.userId ? '/tasks' : '/login'));
+  const requirePageLogin = (req, res, next) => {
+    if (req.isAuthenticated()) return next();
+    return res.redirect('/login');
+  };
+  const guestPage = (view) => (req, res) => {
+    if (req.isAuthenticated()) return res.redirect('/tasks');
+    return res.render(view);
+  };
 
-  app.get('/login', prepareGuestForm, (req, res) => {
-    const message = req.session.registrationMessage || '';
-    delete req.session.registrationMessage;
-    res.render('login', { username: '', error: '', message });
-  });
-
-  // Look up the username and check the submitted password against its stored hash.
-  app.post('/login', form, requireCsrf, async (req, res, next) => {
-    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
-    const password = req.body?.password;
-    let user;
-    if (username && username.length <= 64 && typeof password === 'string' &&
-        password && Buffer.byteLength(password) <= 72) {
-      user = await User.findOne({ username }).select('+passwordHash');
-    }
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-      return res.status(401).render('login', { username, error: 'Invalid username or password.', message: '' });
-    }
-
-    // Replace the guest session and save the user ID before redirecting to the task list.
-    req.session.regenerate((error) => {
-      if (error) return next(error);
-      req.session.userId = user._id.toString();
-      req.session.csrfToken = randomBytes(32).toString('hex');
-      req.session.save((saveError) => {
-        if (saveError) return next(saveError);
-        res.redirect(303, '/tasks');
-      });
-    });
-  });
-
-  app.get('/register', prepareGuestForm, (req, res) => {
-    res.render('register', { username: '', error: '' });
-  });
-
-  app.post('/register', form, requireCsrf, async (req, res, next) => {
-    if (req.session.userId) return res.redirect(303, '/tasks');
-
-    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
-    const password = req.body?.password;
-    if (!username || username.length > 64) {
-      return res.status(400).render('register', { username, error: 'Enter a username of 1 to 64 characters.' });
-    }
-    if (typeof password !== 'string' || password.trim().length < 8 || Buffer.byteLength(password) > 72) {
-      return res.status(400).render('register', {
-        username,
-        error: 'Use at least 8 characters after trimming spaces and at most 72 bytes.'
-      });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-    try {
-      await User.create({ username, passwordHash });
-    } catch (error) {
-      if (error.code !== 11000) throw error;
-      return res.status(409).render('register', { username, error: 'That username is already taken' });
-    }
-
-    req.session.registrationMessage = 'Account created. Please log in.';
-    req.session.save((error) => {
-      if (error) return next(error);
-      res.redirect(303, '/login');
-    });
-  });
-
-  // Delete the session from MongoDB and clear its cookie in the browser.
-  app.post('/logout', requireLogin, form, requireCsrf, (req, res, next) => {
-    req.session.destroy((error) => {
-      if (error) return next(error);
-      res.clearCookie(cookieName, cookieOptions);
-      res.redirect(303, '/login');
-    });
-  });
-
-  // Check login before routing. Browser forms use URL-encoded data and the API uses JSON.
-  app.use('/tasks', requireLogin, form, requireCsrf, taskRoutes);
-  app.get('/dashboard', requireLogin, (req, res) => res.redirect('/tasks'));
-  app.use('/api/tasks', requireLogin, express.json({ limit: '16kb' }), requireCsrf, apiRoutes);
+  app.get('/', (req, res) => res.redirect(req.isAuthenticated() ? '/tasks' : '/login'));
+  app.get('/login', guestPage('login'));
+  app.get('/register', guestPage('register'));
+  app.get('/dashboard', requirePageLogin, (req, res) => res.redirect('/tasks'));
+  app.use('/tasks', requirePageLogin, taskRoutes);
+  app.use('/api/auth', auth.router);
+  app.use('/api/tasks', auth.requireLogin, auth.requireCsrf, express.json({ limit: '16kb' }), apiRoutes);
 
   // These handlers run after the routes for unmatched URLs and failed requests.
   app.use((req, res) => showError(req, res, 404, 'Page not found.'));
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
     if (error.status >= 400 && error.status < 500) {
-      return showError(req, res, 400, 'Invalid request data.');
+      return showError(req, res, error.status, 'Invalid request data.');
     }
     // Keep database URLs, credentials and request bodies out of logs.
     console.error('Request failed:', error.name);

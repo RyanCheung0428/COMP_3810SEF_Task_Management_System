@@ -1,23 +1,12 @@
-<%#
-  The login form sends the username, password, and form token to POST /login.
--%>
-<%- include('partials/header', { title: 'Log in', page: 'login' }) %>
+<%- include('partials/header', { title: 'Log in' }) %>
 <section class="panel narrow">
   <h1>Log in</h1>
-  <% if (message) { %>
-    <p class="notice notice-success" role="status"><%= message %></p>
-  <% } %>
-  <%#
-    Show the login error and keep the username for another attempt.
-  -%>
-  <% if (error) { %>
-    <p class="notice notice-error" role="alert"><%= error %></p>
-  <% } %>
-  <form method="post" action="/login" class="stack">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <p class="notice notice-error" role="alert" hidden></p>
+  <p class="notice notice-success" role="status" hidden></p>
+  <form method="post" action="/api/auth/login" data-auth="login" class="stack">
     <div>
       <label for="username">Username</label>
-      <input id="username" name="username" value="<%= username %>" autocomplete="username" required>
+      <input id="username" name="username" autocomplete="username" required>
     </div>
     <div>
       <label for="password">Password</label>

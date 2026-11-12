@@ -5,8 +5,7 @@
   "description": "A personal task manager for the COMP 3810SEF group project",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "migrate:task-fields": "node scripts/migrate-task-fields.js"
+    "start": "node server.js"
   },
   "engines": {
     "node": ">=22.12"
@@ -16,8 +15,10 @@
     "connect-mongo": "^6.0.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
-    "express-session": "^1.18.2",
+    "express-session": "^1.19.0",
     "mongodb": "^7.0.0",
-    "mongoose": "^9.0.0"
+    "mongoose": "^9.0.0",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0"
   }
 }

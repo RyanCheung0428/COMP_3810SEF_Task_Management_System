@@ -1,4 +1,4 @@
-// The REST API under /api/tasks uses the session to identify the task owner and returns JSON.
+// The REST API under /api/tasks uses Passport to identify the task owner and returns JSON.
 const express = require('express');
 const mongoose = require('mongoose');
 const Task = require('../models/Task');
@@ -21,9 +21,16 @@ router.get('/', async (req, res) => {
     return res.status(400).json({ error: 'Check the task filters.', fields: errors });
   }
 
-  const tasks = await Task.find({ userId: req.session.userId, ...query })
+  const tasks = await Task.find({ userId: req.user.id, ...query })
     .sort({ createdAt: -1 }).lean();
   return res.json(tasks);
+});
+
+// Return a single task for the edit page.
+router.get('/:id', async (req, res) => {
+  const task = await Task.findOne({ _id: req.params.id, userId: req.user.id }).lean();
+  if (!task) return res.status(404).json({ error: 'Task not found.' });
+  return res.json(task);
 });
 
 // POST /api/tasks validates the request, creates the task, and returns 201 with the new record.
@@ -33,7 +40,7 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Check the task fields.', fields: errors });
   }
 
-  const createdTask = await Task.create({ ...task, userId: req.session.userId });
+  const createdTask = await Task.create({ ...task, userId: req.user.id });
   return res.status(201).json(createdTask);
 });
 
@@ -45,7 +52,7 @@ router.put('/:id', async (req, res) => {
   }
 
   // Match both IDs so a task outside this user's account returns 404.
-  const filter = { _id: req.params.id, userId: req.session.userId };
+  const filter = { _id: req.params.id, userId: req.user.id };
   const updatedTask = await Task.findOneAndUpdate(filter, { $set: task }, {
     returnDocument: 'after', runValidators: true
   });
@@ -56,7 +63,7 @@ router.put('/:id', async (req, res) => {
 
 // DELETE /api/tasks/:id removes the user's task and returns a 200 confirmation.
 router.delete('/:id', async (req, res) => {
-  const result = await Task.deleteOne({ _id: req.params.id, userId: req.session.userId });
+  const result = await Task.deleteOne({ _id: req.params.id, userId: req.user.id });
   if (result.deletedCount === 0) return res.status(404).json({ error: 'Task not found.' });
 
   return res.json({ message: 'Task deleted.' });
