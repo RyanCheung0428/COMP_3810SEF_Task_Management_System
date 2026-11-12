@@ -1,6 +1,6 @@
 # TaskFlow 個人任務管理系統
 
-COMP 3810SEF Autumn 2026 Group Project。TaskFlow 讓使用者登入後建立、搜尋、修改和刪除私人任務。REST API 也可以操作同一帳號的任務。
+COMP 3810SEF Autumn 2026 Group Project。TaskFlow 讓使用者登入後建立、查看、修改和刪除私人任務。REST API 也可以操作同一帳號的任務。
 
 ## 小組資料
 
@@ -10,7 +10,7 @@ COMP 3810SEF Autumn 2026 Group Project。TaskFlow 讓使用者登入後建立、
 | --- | --- | --- | --- |
 | 1 | 待填 | 待填 | 登入、登出、Session 及權限檢查 |
 | 2 | 待填 | 待填 | MongoDB、資料模型及帳戶管理 |
-| 3 | 待填 | 待填 | 任務列表、搜尋及篩選 |
+| 3 | 待填 | 待填 | 任務列表及狀態切換 |
 | 4 | 待填 | 待填 | 修改、刪除及資料驗證 |
 | 5 | 待填 | 待填 | REST API、HTTP 狀態碼及 cURL |
 | 6 | 待填 | 待填 | EJS、CSS 及 Docker |
@@ -28,7 +28,7 @@ COMP 3810SEF Autumn 2026 Group Project。TaskFlow 讓使用者登入後建立、
 | `views/` | EJS 頁面及共用頁首／頁尾 |
 | `public/` | CSS 和少量瀏覽器 JavaScript，例如確認刪除 |
 | `scripts/` | 資料遷移 |
-| `task-input.js` | 網頁和 API 共用的任務驗證及搜尋條件 |
+| `task-input.js` | 網頁和 API 共用的任務驗證及 API 篩選條件 |
 | `Dockerfile`、`compose.yaml` | Node.js 24 app container and Atlas connection settings |
 | `.env.example` | 環境變數範例 |
 
@@ -39,7 +39,7 @@ COMP 3810SEF Autumn 2026 Group Project。TaskFlow 讓使用者登入後建立、
 | Feature | Follow the request |
 | --- | --- |
 | Login and logout | `views/login.ejs` submits to `server.js`. The server finds the account through `models/User.js`, checks the password against its stored hash, and records the user ID in the session. Logging out removes the session. |
-| Task list and filters | `routes/tasks.js` uses `readTaskFilters` from `task-input.js` to build the search conditions, queries the signed-in user's tasks, then renders `views/tasks.ejs`. |
+| Task list | `routes/tasks.js` queries the signed-in user's tasks for the selected status view, then renders `views/tasks.ejs`. |
 | Add, edit, and delete tasks | `views/task-form.ejs` submits to `routes/tasks.js`, which validates input in `task-input.js` before writing through `models/Task.js`. `public/forms.js` asks for confirmation before the delete form is sent. |
 | Overdue labels | The task list uses `isOverdue` from `server.js` to compare due dates with today's date in Hong Kong. |
 | REST API | `server.js` checks the session before `routes/api.js` handles `/api/tasks`. The routes use the same task model and validation as the web pages, and return JSON. |
@@ -106,9 +106,9 @@ docker compose up -d app
 ## 網頁操作
 
 1. **登入。** 先在 `/register` 建立帳號，然後開啟 `/login`，輸入帳號的 Username 和 Password，然後按 **Log in** 進入 Tasks 頁。未登入訪問任務頁會返回登入頁。
-2. **新增。** 在 Tasks 頁按 **Add task**，輸入 Title，並選擇填寫 Description 和 Due date，再按 **Save task**。新任務預設為進行中。
-3. **查看及搜尋。** Tasks 頁按最新建立時間排序。輸入標題關鍵字即可搜尋。按 **Clear filters** 恢復完整列表。
-4. **更新任務。** 按 **Mark complete** 完成任務，或按 **Reopen** 重新開啟。按 **Edit** 修改資料會保留任務的狀態。按 **Delete** 後可確認或取消刪除。
+2. **新增。** 在 Tasks 頁按 **Add task** 進入獨立表單頁。輸入 Title，可選填 Description 和 Due date，然後按 **Save task**。新任務預設為進行中。
+3. **查看。** 主頁預設顯示全部未完成任務，最新建立的排在最前。按 **Completed** 查看已完成任務，或按 **In progress** 切回未完成清單。
+4. **更新任務。** 按任務左側的勾選按鈕完成或重新開啟任務。從右側的 **⋯** 選單選 **Edit** 進入獨立編輯頁，或選 **Delete** 並確認刪除。
 5. **查看逾期任務。** Tasks 頁會為尚未完成且截止日早於香港當天日期的任務顯示 **Overdue**。
 6. **登出。** 按 **Log out**。再開啟任務頁時需要重新登入。
 
@@ -131,7 +131,7 @@ API 和網頁使用同一套私人任務及登入 Session。GET 可使用 `title
 | --- | --- |
 | 未登入訪問 `/tasks` 或 API | 網頁轉到登入頁，API 回傳 401 |
 | 輸入錯誤密碼、登入後登出 | 錯誤密碼不能登入，登出後舊 Session 不能再使用 |
-| 新增、搜尋、編輯、完成、重新開啟及刪除任務 | 列表按標題搜尋，完成和重新開啟會保留搜尋條件，取消刪除會保留任務 |
+| 新增、編輯、完成、重新開啟及刪除任務 | 列表可在未完成及已完成之間切換，取消刪除會保留任務 |
 | 空白或過長標題、無效日期、錯誤狀態 | 顯示錯誤，資料不會被儲存 |
 | 標題含 `<`、`>` 或 `&` | 顯示為文字 |
 | 使用自行註冊的第二個帳號查看第一個帳號的任務或提交其 ID | 列表看不到他人資料，直接操作回傳 404 |

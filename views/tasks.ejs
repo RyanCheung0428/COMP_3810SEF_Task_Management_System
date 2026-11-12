@@ -1,103 +1,67 @@
-<%#
-  List the current user's tasks and provide search, add, complete, reopen, edit, and delete controls.
--%>
-<%- include('partials/header', { title: 'Tasks', page: 'tasks' }) %>
+<%- include('partials/header', { title: 'Tasks' }) %>
+<% const formQuery = view ? '?view=completed' : ''; %>
 <div class="page-heading">
-  <h1>Your tasks</h1>
-  <a class="button" href="/tasks/new">Add task</a>
+  <a class="button" href="/tasks/new<%= formQuery %>">Add task</a>
 </div>
 
-<%#
-  Show the previous action's result or errors from the current filters.
--%>
+<nav class="stats" aria-label="Task status">
+  <a class="panel stat" href="/tasks"<% if (!view) { %> aria-current="page"<% } %>>
+    <span>In progress</span>
+    <strong><%= stats.inProgress %></strong>
+  </a>
+  <a class="panel stat" href="/tasks?view=completed"<% if (view) { %> aria-current="page"<% } %>>
+    <span>Completed</span>
+    <strong><%= stats.completed %></strong>
+  </a>
+</nav>
+
 <% if (message) { %>
   <p class="notice notice-success" role="status"><%= message %></p>
 <% } %>
-<% if (errors && Object.keys(errors).length) { %>
-  <ul class="notice notice-error" role="alert">
-    <% for (const error of Object.values(errors)) { %>
-      <li><%= error %></li>
-    <% } %>
-  </ul>
-<% } %>
 
-<%#
-  The GET form keeps the title keyword in the URL.
--%>
-<form class="panel filters" method="get" action="/tasks" aria-label="Task filters">
-  <div>
-    <label for="filter-title">Title keyword</label>
-    <input id="filter-title" name="title" value="<%= filters.title %>" placeholder="Search by title">
-  </div>
-  <div class="actions">
-    <button class="button" type="submit">Search</button>
-    <a class="button button-secondary" href="/tasks">Clear filters</a>
-  </div>
-</form>
-
-<%#
-  Use a different message for an empty task list and a search with no matches.
--%>
 <% if (!tasks.length) { %>
   <div class="panel empty">
-    <% if (filters.title) { %>
-      <h2>No matching tasks</h2>
-      <p>Try a different title keyword.</p>
-    <% } else { %>
-      <h2>No tasks yet</h2>
-      <p>Add a task to get started.</p>
-    <% } %>
+    <h2><%= view ? 'No completed tasks yet' : 'No unfinished tasks' %></h2>
   </div>
 <% } else { %>
-  <ul class="task-list">
-    <%#
-      Render one card per task and display user input as text.
-    -%>
+  <ul class="panel task-list">
     <% for (const task of tasks) { %>
-      <li class="panel task">
-        <div>
+      <% const isCompleted = task.status === 'Completed'; %>
+      <li class="task">
+        <form method="post" action="/tasks/<%= task._id %>/<%= isCompleted ? 'reopen' : 'complete' %>">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="view" value="<%= view %>">
+          <button class="task-control task-toggle" type="submit" aria-label="<%= isCompleted ? 'Reopen' : 'Complete' %> <%= task.title %>"
+            title="<%= isCompleted ? 'Reopen task' : 'Complete task' %>">
+            <span class="task-check<%= isCompleted ? ' is-checked' : '' %>" aria-hidden="true"><%= isCompleted ? '✓' : '' %></span>
+          </button>
+        </form>
+        <div class="task-content">
           <h2><%= task.title %></h2>
           <% if (task.description) { %>
             <p class="description"><%= task.description %></p>
           <% } %>
           <% if (task.dueDate) { %>
-            <dl class="task-details">
-              <div>
-                <dt>Due date</dt>
-                <dd>
-                  <time datetime="<%= displayDate(task.dueDate) %>"><%= displayDate(task.dueDate) %></time>
-                  <%#
-                    Use the shared helper to check if a task is overdue in Hong Kong.
-                  -%>
-                  <% if (isOverdue(task)) { %>
-                    <span class="overdue">Overdue</span>
-                  <% } %>
-                </dd>
-              </div>
-            </dl>
+            <p class="task-date">
+              Due <time datetime="<%= displayDate(task.dueDate) %>"><%= displayDate(task.dueDate) %></time>
+              <% if (isOverdue(task)) { %><span class="overdue">Overdue</span><% } %>
+            </p>
           <% } %>
         </div>
-        <div class="actions">
-          <% const canReopen = task.status === 'Completed'; %>
-          <% const actionLabel = canReopen ? 'Reopen' : 'Mark complete'; %>
-          <form method="post" action="/tasks/<%= task._id %>/<%= canReopen ? 'reopen' : 'complete' %>">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <% if (filters.title) { %>
-              <input type="hidden" name="title" value="<%= filters.title %>">
-            <% } %>
-            <button class="button<%= canReopen ? ' button-secondary' : '' %>" type="submit" aria-label="<%= actionLabel %> for <%= task.title %>"><%= actionLabel %></button>
-          </form>
-          <a class="button button-secondary" href="/tasks/<%= task._id %>/edit" aria-label="Edit <%= task.title %>">Edit</a>
-          <%#
-            The browser asks for confirmation before submitting this form.
-          -%>
-          <form method="post" action="/tasks/<%= task._id %>/delete" data-confirm="Delete this task?">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button class="button button-danger" type="submit" aria-label="Delete <%= task.title %>">Delete</button>
-          </form>
-        </div>
+        <details class="task-options">
+          <summary class="task-control" aria-label="Actions for <%= task.title %>"><span aria-hidden="true">⋯</span></summary>
+          <div class="task-options-panel">
+            <a href="/tasks/<%= task._id %>/edit<%= formQuery %>">Edit</a>
+            <form method="post" action="/tasks/<%= task._id %>/delete" data-confirm="Delete this task?">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="view" value="<%= view %>">
+              <button class="delete-task" type="submit">Delete</button>
+            </form>
+          </div>
+        </details>
       </li>
     <% } %>
   </ul>
 <% } %>
+
 <%- include('partials/footer') %>

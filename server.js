@@ -9,7 +9,6 @@ const mongoose = require('mongoose');
 
 const User = require('./models/User');
 const taskRoutes = require('./routes/tasks');
-const dashboardRoutes = require('./routes/dashboard');
 const apiRoutes = require('./routes/api');
 
 const cookieName = 'taskflow.sid';
@@ -210,7 +209,7 @@ async function start() {
 
   // Check login before routing. Browser forms use URL-encoded data and the API uses JSON.
   app.use('/tasks', requireLogin, form, requireCsrf, taskRoutes);
-  app.use('/dashboard', requireLogin, dashboardRoutes);
+  app.get('/dashboard', requireLogin, (req, res) => res.redirect('/tasks'));
   app.use('/api/tasks', requireLogin, express.json({ limit: '16kb' }), requireCsrf, apiRoutes);
 
   // These handlers run after the routes for unmatched URLs and failed requests.

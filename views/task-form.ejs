@@ -1,7 +1,4 @@
-<%#
-  Add and edit use the same form. The server supplies its heading, values, and submission URL.
--%>
-<%- include('partials/header', { title: heading, page: 'tasks' }) %>
+<%- include('partials/header', { title: heading }) %>
 <section class="panel form-panel">
   <h1><%= heading %></h1>
   <% if (errors._form) { %>
@@ -12,6 +9,9 @@
   -%>
   <form method="post" action="<%= action %>" class="stack">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% if (view) { %>
+      <input type="hidden" name="view" value="<%= view %>">
+    <% } %>
     <div>
       <label for="title">Title</label>
       <input id="title" name="title" value="<%= task.title %>" maxlength="120" required
@@ -44,7 +44,7 @@
     </div>
     <div class="actions">
       <button class="button" type="submit">Save task</button>
-      <a class="button button-secondary" href="/tasks">Cancel</a>
+      <a class="button button-secondary" href="<%= listUrl %>">Cancel</a>
     </div>
   </form>
 </section>

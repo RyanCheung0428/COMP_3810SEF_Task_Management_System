@@ -19,12 +19,10 @@
     <div class="container header-inner">
       <a class="brand" href="<%= signedIn ? '/tasks' : '/login' %>">TaskFlow</a>
       <%#
-        Show task navigation and the logout form only to signed-in users.
+        Show the logout form only to signed-in users.
       -%>
       <% if (signedIn) { %>
         <nav aria-label="Main navigation">
-          <a href="/tasks"<% if (page === 'tasks') { %> aria-current="page"<% } %>>Tasks</a>
-          <a href="/dashboard"<% if (page === 'dashboard') { %> aria-current="page"<% } %>>Dashboard</a>
           <form method="post" action="/logout">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button class="button button-secondary" type="submit">Log out</button>
