@@ -57,7 +57,7 @@ show_response() {
 # Create a task and keep its ID for the update and delete requests.
 status=$(curl -sS -o "$RESPONSE_FILE" -w '%{http_code}' -b "$COOKIE_JAR" \
   -H "X-CSRF-Token: $token" -H 'Content-Type: application/json' \
-  -d '{"title":"cURL demo task","status":"Pending","priority":"High"}' \
+  -d '{"title":"cURL demo task"}' \
   "$BASE_URL/api/tasks")
 show_response POST "$status" 201
 task_id=$(sed -n 's/.*"_id":"\([0-9a-f]\{24\}\)".*/\1/p' "$RESPONSE_FILE")
@@ -66,10 +66,10 @@ if [ -z "$task_id" ]; then
   exit 1
 fi
 
-# Read tasks that match all three filters. The -G option adds them to the URL query.
+# Read tasks that match both filters. The -G option adds them to the URL query.
 status=$(curl -sS -o "$RESPONSE_FILE" -w '%{http_code}' -G -b "$COOKIE_JAR" \
   --data-urlencode 'title=cURL demo task' \
-  --data-urlencode 'status=Pending' --data-urlencode 'priority=High' \
+  --data-urlencode 'status=In Progress' \
   "$BASE_URL/api/tasks")
 show_response GET "$status" 200
 

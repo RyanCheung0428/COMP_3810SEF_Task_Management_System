@@ -21,7 +21,8 @@ router.get('/', async (req, res) => {
     return res.status(400).json({ error: 'Check the task filters.', fields: errors });
   }
 
-  const tasks = await Task.find({ userId: req.session.userId, ...query }).sort({ createdAt: -1 }).lean();
+  const tasks = await Task.find({ userId: req.session.userId, ...query })
+    .sort({ createdAt: -1 }).lean();
   return res.json(tasks);
 });
 
@@ -38,7 +39,7 @@ router.post('/', async (req, res) => {
 
 // PUT /api/tasks/:id applies the submitted editable fields and returns the updated task.
 router.put('/:id', async (req, res) => {
-  const { task, errors } = validateTask(req.body, true);
+  const { task, errors } = validateTask(req.body, { partial: true });
   if (Object.keys(errors).length > 0) {
     return res.status(400).json({ error: 'Check the task fields.', fields: errors });
   }

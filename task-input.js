@@ -1,19 +1,17 @@
 // The task pages and API share these field choices, validation rules and search filters.
-const statuses = ['Pending', 'In Progress', 'Completed'];
-const priorities = ['Low', 'Medium', 'High'];
+const inProgress = 'In Progress';
+const completed = 'Completed';
+const statuses = [inProgress, completed];
 
 // These defaults fill the new-task form and list the fields a user can edit.
 const emptyTask = {
   title: '',
   description: '',
-  status: 'Pending',
-  priority: 'Medium',
-  category: '',
   dueDate: null
 };
 
 // Return cleaned task fields and errors. A partial update checks only the submitted fields.
-function validateTask(input, partial = false) {
+function validateTask(input, { partial = false, allowStatus = true } = {}) {
   const task = partial ? {} : { ...emptyTask };
   const errors = {};
 
@@ -23,7 +21,9 @@ function validateTask(input, partial = false) {
   }
 
   // Copy only editable fields. The server sets IDs, ownership and timestamps.
-  for (const field of Object.keys(emptyTask)) {
+  const fields = Object.keys(emptyTask);
+  if (allowStatus) fields.push('status');
+  for (const field of fields) {
     if (!Object.hasOwn(input, field)) continue;
 
     const value = input[field];
@@ -43,7 +43,7 @@ function validateTask(input, partial = false) {
       }
     } else if (typeof value !== 'string') {
       errors[field] = 'Enter a text value.';
-    } else if (field === 'title' || field === 'category') {
+    } else if (field === 'title') {
       task[field] = value.trim();
     } else {
       task[field] = value;
@@ -60,9 +60,6 @@ function validateTask(input, partial = false) {
   if (task.status !== undefined && !statuses.includes(task.status)) {
     errors.status = 'Choose a valid status.';
   }
-  if (task.priority !== undefined && !priorities.includes(task.priority)) {
-    errors.priority = 'Choose a valid priority.';
-  }
   if (partial && Object.keys(task).length === 0 && Object.keys(errors).length === 0) {
     errors._form = 'Provide at least one editable task field.';
   }
@@ -71,8 +68,8 @@ function validateTask(input, partial = false) {
 }
 
 // Return the form values, MongoDB query conditions and any validation errors.
-function readTaskFilters(input) {
-  const filters = { title: '', status: '', priority: '' };
+function readTaskFilters(input, { allowStatus = true } = {}) {
+  const filters = allowStatus ? { title: '', status: '' } : { title: '' };
   const query = {};
   const errors = {};
 
@@ -93,17 +90,13 @@ function readTaskFilters(input) {
     query.title = new RegExp(text, 'i');
   }
 
-  // Add status and priority to the same query so a task must match every filter.
+  // Add status to the same query so a task must match both filters.
   if (filters.status) {
     if (statuses.includes(filters.status)) query.status = filters.status;
     else errors.status = 'Choose a valid status.';
-  }
-  if (filters.priority) {
-    if (priorities.includes(filters.priority)) query.priority = filters.priority;
-    else errors.priority = 'Choose a valid priority.';
   }
 
   return { filters, query, errors };
 }
 
-module.exports = { emptyTask, statuses, priorities, validateTask, readTaskFilters };
+module.exports = { emptyTask, inProgress, completed, statuses, validateTask, readTaskFilters };

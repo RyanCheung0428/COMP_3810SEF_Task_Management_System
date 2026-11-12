@@ -2,13 +2,13 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Task = require('../models/Task');
-const { emptyTask, statuses, priorities, validateTask, readTaskFilters } = require('../task-input');
+const { emptyTask, inProgress, completed, validateTask, readTaskFilters } = require('../task-input');
 
 const router = express.Router();
 
 // Use the same EJS form for new and existing tasks with a different heading and submit URL.
 function showForm(res, task, errors, action, heading, status = 200) {
-  return res.status(status).render('task-form', { task, errors, statuses, priorities, action, heading });
+  return res.status(status).render('task-form', { task, errors, action, heading });
 }
 
 // Show the same 404 page when a task is missing or belongs to another user.
@@ -26,7 +26,7 @@ router.param('id', (req, res, next, id) => {
 
 // GET /tasks checks the search filters and lists the user's tasks from newest to oldest.
 router.get('/', async (req, res) => {
-  const { filters, query, errors } = readTaskFilters(req.query);
+  const { filters, query, errors } = readTaskFilters(req.query, { allowStatus: false });
   const hasErrors = Object.keys(errors).length > 0;
   const tasks = hasErrors ? [] : await Task.find({ userId: req.session.userId, ...query })
     .sort({ createdAt: -1 }).lean();
@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
   delete req.session.message;
 
   return res.status(hasErrors ? 400 : 200).render('tasks', {
-    tasks, filters, statuses, priorities, message, errors
+    tasks, filters, message, errors
   });
 });
 
@@ -47,7 +47,7 @@ router.get('/new', (req, res) => {
 
 // POST /tasks validates the form and creates a task owned by the user in the session.
 router.post('/', async (req, res) => {
-  const { task, errors } = validateTask(req.body);
+  const { task, errors } = validateTask(req.body, { allowStatus: false });
   if (Object.keys(errors).length > 0) {
     return showForm(res, task, errors, '/tasks', 'Add Task', 400);
   }
@@ -69,7 +69,7 @@ router.get('/:id/edit', async (req, res) => {
 // POST /tasks/:id/edit updates the user's task or shows the form again with validation errors.
 router.post('/:id/edit', async (req, res) => {
   const filter = { _id: req.params.id, userId: req.session.userId };
-  const { task, errors } = validateTask(req.body);
+  const { task, errors } = validateTask(req.body, { allowStatus: false });
 
   if (Object.keys(errors).length > 0) {
     if (!await Task.exists(filter)) return taskNotFound(res);
@@ -82,6 +82,27 @@ router.post('/:id/edit', async (req, res) => {
   req.session.message = 'Task updated.';
   return res.redirect(303, '/tasks');
 });
+
+// Complete or reopen an owned task and return to the current title search.
+async function changeStatus(req, res, status, message) {
+  const filter = { _id: req.params.id, userId: req.session.userId };
+  const result = await Task.updateOne(
+    { ...filter, status: { $ne: status } },
+    { $set: { status } },
+    { runValidators: true }
+  );
+  // Repeating the action succeeds without changing the task again.
+  if (result.matchedCount === 0 && !await Task.exists(filter)) return taskNotFound(res);
+
+  req.session.message = message;
+  const { filters, errors } = readTaskFilters(req.body ?? {}, { allowStatus: false });
+  if (errors.title || !filters.title) return res.redirect(303, '/tasks');
+
+  return res.redirect(303, `/tasks?${new URLSearchParams(filters)}`);
+}
+
+router.post('/:id/complete', (req, res) => changeStatus(req, res, completed, 'Task completed.'));
+router.post('/:id/reopen', (req, res) => changeStatus(req, res, inProgress, 'Task reopened.'));
 
 // POST /tasks/:id/delete removes a task only when both the task ID and the owner's ID match.
 router.post('/:id/delete', async (req, res) => {

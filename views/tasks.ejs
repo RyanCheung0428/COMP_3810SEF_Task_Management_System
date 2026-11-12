@@ -1,5 +1,5 @@
 <%#
-  List the current user's tasks and provide search, add, edit, and delete controls.
+  List the current user's tasks and provide search, add, complete, reopen, edit, and delete controls.
 -%>
 <%- include('partials/header', { title: 'Tasks', page: 'tasks' }) %>
 <div class="page-heading">
@@ -22,30 +22,12 @@
 <% } %>
 
 <%#
-  The GET form puts filters in the URL. The server returns matching tasks and keeps the selected filters.
+  The GET form keeps the title keyword in the URL.
 -%>
 <form class="panel filters" method="get" action="/tasks" aria-label="Task filters">
   <div>
     <label for="filter-title">Title keyword</label>
     <input id="filter-title" name="title" value="<%= filters.title %>" placeholder="Search by title">
-  </div>
-  <div>
-    <label for="filter-status">Status</label>
-    <select id="filter-status" name="status">
-      <option value="">All statuses</option>
-      <% for (const status of statuses) { %>
-        <option value="<%= status %>"<% if (filters.status === status) { %> selected<% } %>><%= status %></option>
-      <% } %>
-    </select>
-  </div>
-  <div>
-    <label for="filter-priority">Priority</label>
-    <select id="filter-priority" name="priority">
-      <option value="">All priorities</option>
-      <% for (const priority of priorities) { %>
-        <option value="<%= priority %>"<% if (filters.priority === priority) { %> selected<% } %>><%= priority %></option>
-      <% } %>
-    </select>
   </div>
   <div class="actions">
     <button class="button" type="submit">Search</button>
@@ -58,9 +40,9 @@
 -%>
 <% if (!tasks.length) { %>
   <div class="panel empty">
-    <% if (filters.title || filters.status || filters.priority) { %>
+    <% if (filters.title) { %>
       <h2>No matching tasks</h2>
-      <p>Change the filters to see more tasks.</p>
+      <p>Try a different title keyword.</p>
     <% } else { %>
       <h2>No tasks yet</h2>
       <p>Add a task to get started.</p>
@@ -78,13 +60,8 @@
           <% if (task.description) { %>
             <p class="description"><%= task.description %></p>
           <% } %>
-          <dl class="task-details">
-            <div><dt>Status</dt><dd><%= task.status %></dd></div>
-            <div><dt>Priority</dt><dd><%= task.priority %></dd></div>
-            <% if (task.category) { %>
-              <div><dt>Category</dt><dd><%= task.category %></dd></div>
-            <% } %>
-            <% if (task.dueDate) { %>
+          <% if (task.dueDate) { %>
+            <dl class="task-details">
               <div>
                 <dt>Due date</dt>
                 <dd>
@@ -97,10 +74,19 @@
                   <% } %>
                 </dd>
               </div>
-            <% } %>
-          </dl>
+            </dl>
+          <% } %>
         </div>
         <div class="actions">
+          <% const canReopen = task.status === 'Completed'; %>
+          <% const actionLabel = canReopen ? 'Reopen' : 'Mark complete'; %>
+          <form method="post" action="/tasks/<%= task._id %>/<%= canReopen ? 'reopen' : 'complete' %>">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <% if (filters.title) { %>
+              <input type="hidden" name="title" value="<%= filters.title %>">
+            <% } %>
+            <button class="button<%= canReopen ? ' button-secondary' : '' %>" type="submit" aria-label="<%= actionLabel %> for <%= task.title %>"><%= actionLabel %></button>
+          </form>
           <a class="button button-secondary" href="/tasks/<%= task._id %>/edit" aria-label="Edit <%= task.title %>">Edit</a>
           <%#
             The browser asks for confirmation before submitting this form.

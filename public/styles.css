@@ -84,16 +84,10 @@ nav > a[aria-current="page"] { font-weight: 700; }
 
 .stack { display: grid; gap: 1rem; }
 
-.form-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.8rem;
-}
-
 /* Keep the filters and search buttons in one row on desktop. */
 .filters {
   display: grid;
-  grid-template-columns: minmax(9rem, 1.4fr) repeat(2, minmax(8rem, 1fr)) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 0.8rem;
   margin-bottom: 1rem;
@@ -199,7 +193,7 @@ ul.notice { padding-left: 2rem; }
 
 [aria-invalid="true"] { border-color: #b42336 !important; }
 
-.optional, .task-details dt, .stats dt, .empty p { color: #435d60; }
+.optional, .task-details dt, .empty p { color: #435d60; }
 
 .optional { font-size: 0.88rem; font-weight: 400; }
 
@@ -221,7 +215,7 @@ ul.notice { padding-left: 2rem; }
 
 .task-details dt { font-size: 0.85rem; }
 
-.task-details dd, .stats dd { margin: 0.15rem 0 0; }
+.task-details dd { margin: 0.15rem 0 0; }
 
 /* Place an overdue label next to the due date. */
 .overdue {
@@ -236,25 +230,9 @@ ul.notice { padding-left: 2rem; }
 
 .empty p { margin-bottom: 0; }
 
-/* Lay out the dashboard counts and the completion bar. */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.8rem;
-  margin: 0 0 1rem;
-}
-
-.stats dd { font-size: 2rem; font-weight: 750; }
-
-progress { width: 100%; height: 1rem; accent-color: #125d55; }
-
-/* Use fewer columns for filters, forms, and statistics on smaller screens. */
-@media (max-width: 760px) {
-  .filters, .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
+/* Stack the search field and buttons on smaller screens. */
 @media (max-width: 480px) {
   main { padding-block: 1.25rem; }
-  .form-row, .filters { grid-template-columns: 1fr; }
+  .filters { grid-template-columns: 1fr; }
   .panel { padding: 1rem; }
 }

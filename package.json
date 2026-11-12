@@ -6,7 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "migrate:task-fields": "node scripts/migrate-task-fields.js"
   },
   "engines": {
     "node": ">=22.12"

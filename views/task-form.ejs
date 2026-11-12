@@ -31,55 +31,16 @@
         <p class="field-error" id="description-error"><%= errors.description %></p>
       <% } %>
     </div>
-    <div class="form-row">
-      <div>
-        <label for="status">Status</label>
-        <select id="status" name="status" required
-          <% if (errors.status) { %> aria-invalid="true" aria-describedby="status-error"<% } %>>
-          <%#
-            Use the server's list of statuses and keep the chosen value selected.
-          -%>
-          <% for (const status of statuses) { %>
-            <option value="<%= status %>"<% if ((task.status || 'Pending') === status) { %> selected<% } %>><%= status %></option>
-          <% } %>
-        </select>
-        <% if (errors.status) { %>
-          <p class="field-error" id="status-error"><%= errors.status %></p>
-        <% } %>
-      </div>
-      <div>
-        <label for="priority">Priority</label>
-        <select id="priority" name="priority" required
-          <% if (errors.priority) { %> aria-invalid="true" aria-describedby="priority-error"<% } %>>
-          <% for (const priority of priorities) { %>
-            <option value="<%= priority %>"<% if ((task.priority || 'Medium') === priority) { %> selected<% } %>><%= priority %></option>
-          <% } %>
-        </select>
-        <% if (errors.priority) { %>
-          <p class="field-error" id="priority-error"><%= errors.priority %></p>
-        <% } %>
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label for="category">Category <span class="optional">(optional)</span></label>
-        <input id="category" name="category" value="<%= task.category %>"
-          <% if (errors.category) { %> aria-invalid="true" aria-describedby="category-error"<% } %>>
-        <% if (errors.category) { %>
-          <p class="field-error" id="category-error"><%= errors.category %></p>
-        <% } %>
-      </div>
-      <div>
-        <%#
-          Format the date as YYYY-MM-DD for the date input.
-        -%>
-        <label for="dueDate">Due date <span class="optional">(optional)</span></label>
-        <input id="dueDate" name="dueDate" type="date" value="<%= displayDate(task.dueDate) %>"
-          <% if (errors.dueDate) { %> aria-invalid="true" aria-describedby="dueDate-error"<% } %>>
-        <% if (errors.dueDate) { %>
-          <p class="field-error" id="dueDate-error"><%= errors.dueDate %></p>
-        <% } %>
-      </div>
+    <div>
+      <%#
+        Format the date as YYYY-MM-DD for the date input.
+      -%>
+      <label for="dueDate">Due date <span class="optional">(optional)</span></label>
+      <input id="dueDate" name="dueDate" type="date" value="<%= displayDate(task.dueDate) %>"
+        <% if (errors.dueDate) { %> aria-invalid="true" aria-describedby="dueDate-error"<% } %>>
+      <% if (errors.dueDate) { %>
+        <p class="field-error" id="dueDate-error"><%= errors.dueDate %></p>
+      <% } %>
     </div>
     <div class="actions">
       <button class="button" type="submit">Save task</button>
