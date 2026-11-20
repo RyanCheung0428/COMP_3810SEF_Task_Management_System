@@ -24,7 +24,7 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 | 檔案 | 用途 |
 | --- | --- |
 | [`server.js`](./server.js) | 啟動 Express、連接 MongoDB，並設定 EJS、靜態資源、MongoDB Session store、Passport 和路由。 |
-| [`routes/auth.js`](./routes/auth.js) | 使用 Passport 驗證帳號密碼及恢復登入狀態，並提供註冊、登出及 CSRF 驗證碼端點。 |
+| [`routes/auth.js`](./routes/auth.js) | 使用 Passport 驗證帳號密碼及恢復登入狀態，並提供註冊、重設密碼、登出及 CSRF 驗證碼端點。 |
 | [`routes/tasks.js`](./routes/tasks.js) | 為任務列表、新增及編輯網址渲染 EJS 頁面。瀏覽器透過 REST API 取得私人任務。 |
 | [`routes/api.js`](./routes/api.js) | 處理任務的查詢、新增、修改和刪除，依 Passport 驗證後的使用者 ID 限制操作範圍。 |
 
@@ -32,7 +32,7 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 
 | 檔案 | 用途 |
 | --- | --- |
-| [`models/User.js`](./models/User.js) | 定義帳戶的使用者名稱、密碼雜湊值和建立時間。使用者名稱有唯一索引，登入時會明確讀取預設隱藏的密碼雜湊。 |
+| [`models/User.js`](./models/User.js) | 定義帳戶的使用者名稱、密碼雜湊值、登入版本和建立時間。使用者名稱有唯一索引，登入時會明確讀取預設隱藏的密碼雜湊。 |
 | [`models/Task.js`](./models/Task.js) | 定義任務欄位、預設值、驗證規則和時間戳記。`userId` 記錄任務的擁有者，建立後固定。任務路由透過此模型讀寫資料。`userId` 與 `createdAt` 的複合索引支援按帳戶查詢及由新至舊排序。 |
 | [`task-input.js`](./task-input.js) | 提供任務預設值和狀態，驗證任務欄位及標題和狀態篩選。截止日期以 UTC 午夜儲存。 |
 
@@ -40,8 +40,9 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 
 | 檔案 | 用途 |
 | --- | --- |
-| [`views/login.ejs`](./views/login.ejs) | 顯示登入表單、登入錯誤、註冊成功訊息和建立帳戶的連結。 |
+| [`views/login.ejs`](./views/login.ejs) | 顯示登入表單、登入錯誤、註冊及重設密碼的成功訊息，以及建立帳戶和忘記密碼的連結。 |
 | [`views/register.ejs`](./views/register.ejs) | 顯示建立帳戶的表單和註冊錯誤。 |
+| [`views/forgot-password.ejs`](./views/forgot-password.ejs) | 顯示重設密碼表單及錯誤訊息。 |
 | [`views/tasks.ejs`](./views/tasks.ejs) | 提供狀態統計、任務列表和各項任務操作的模板。 |
 | [`views/task-form.ejs`](./views/task-form.ejs) | 提供新增及編輯任務共用表單，以及顯示欄位錯誤的位置。 |
 | [`views/error.ejs`](./views/error.ejs) | 顯示錯誤狀態碼、訊息和返回系統的連結。 |
@@ -65,8 +66,9 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 ## 請求流程
 
 1. 登入頁從 `GET /api/auth/csrf` 取得驗證碼，並以 JSON 將帳號密碼送到 `POST /api/auth/login`。Passport Local strategy 以 bcrypt 核對現有密碼雜湊。
-2. 登入成功後，Passport 建立新的 Session，將使用者 ID 存到 MongoDB。瀏覽器收到有效期兩小時的 `HttpOnly`、`SameSite=Lax` Cookie，並在同源請求中帶上它。
-3. Passport 根據 Session 恢復帳戶身分，任務路由按使用者 ID 存取資料。寫入請求透過 `X-CSRF-Token` 提交目前 Session 的驗證碼。登出會銷毀 Session 並清除 Cookie。
+2. 登入成功後，Passport 建立新的 Session，將使用者 ID 及登入版本存到 MongoDB。瀏覽器收到有效期兩小時的 `HttpOnly`、`SameSite=Lax` Cookie，並在同源請求中帶上它。
+3. Passport 核對 Session 和帳戶的登入版本後，恢復帳戶身分。任務路由按使用者 ID 存取資料。寫入請求透過 `X-CSRF-Token` 提交目前 Session 的驗證碼。登出會銷毀 Session 並清除 Cookie。
+4. 重設密碼時，伺服器同時更新帳戶的 bcrypt 密碼雜湊及登入版本。該帳戶先前的 Session 隨即失效。
 
 ## 使用 Docker 與 MongoDB Atlas 啟動
 
@@ -119,21 +121,23 @@ Compose 依 `Dockerfile` 建置映像檔並啟動 `app` 容器。容器以 `npm 
 ## 網頁操作
 
 1. **登入。** 先在 `/register` 建立帳號，然後開啟 `/login`，輸入帳號的 Username 和 Password，然後按 **Log in** 進入 Tasks 頁。未登入訪問任務頁會返回登入頁。
-2. **新增。** 在 Tasks 頁按 **Add task** 進入獨立表單頁。輸入 Title，可選填 Description 和 Due date，然後按 **Save task**。新任務預設為進行中。
-3. **查看及搜尋。** 主頁預設顯示全部未完成任務，最新建立的排在最前。在 **Search by title** 輸入標題關鍵字，停止輸入 300 毫秒後即時搜尋；按 Enter 可立即搜尋，按框內的清除按鈕恢復完整清單。搜尋不分大小寫。按 **Completed** 或 **In progress** 可在搜尋結果中切換狀態，兩張狀態卡顯示符合關鍵字的任務數量。搜尋條件保存在網址中，重新整理及新增／編輯後返回時仍會保留。
-4. **更新任務。** 按任務左側的勾選按鈕完成或重新開啟任務。從右側的 **⋯** 選單選 **Edit** 進入獨立編輯頁，或選 **Delete** 並確認刪除。
-5. **查看逾期任務。** 任務頁會為尚未完成且截止日早於香港當天日期的任務顯示 **Overdue**。
-6. **登出。** 按 **Log out**。再開啟任務頁時需要重新登入。
+2. **忘記密碼。** 在登入頁按 **Forgot password?**，輸入使用者名稱，填寫並確認新密碼，再按 **Reset password**。重設成功後返回登入頁，使用新密碼登入即可存取原有任務。此功能適用於所有帳戶，任何知道使用者名稱的人都可以重設該帳戶的密碼。
+3. **新增。** 在 Tasks 頁按 **Add task** 進入獨立表單頁。輸入 Title，可選填 Description 和 Due date，然後按 **Save task**。新任務預設為進行中。
+4. **查看及搜尋。** 主頁預設顯示全部未完成任務，最新建立的排在最前。在 **Search by title** 輸入標題關鍵字，停止輸入 300 毫秒後即時搜尋；按 Enter 可立即搜尋，按框內的清除按鈕恢復完整清單。搜尋不分大小寫。按 **Completed** 或 **In progress** 可在搜尋結果中切換狀態，兩張狀態卡顯示符合關鍵字的任務數量。搜尋條件保存在網址中，重新整理及新增／編輯後返回時仍會保留。
+5. **更新任務。** 按任務左側的勾選按鈕完成或重新開啟任務。從右側的 **⋯** 選單選 **Edit** 進入獨立編輯頁，或選 **Delete** 並確認刪除。
+6. **查看逾期任務。** 任務頁會為尚未完成且截止日早於香港當天日期的任務顯示 **Overdue**。
+7. **登出。** 按 **Log out**。再開啟任務頁時需要重新登入。
 
 ## REST API
 
-任務 API 及登出需要 Session Cookie。登入、註冊、登出及任務寫入需要 `X-CSRF-Token`。任務列表可使用 `title` 和 `status` 組合篩選。POST 和 PUT 接收 JSON，PUT 保留未提交的欄位。可編輯欄位為 `title`、`description`、`status`、`dueDate`。`status` 接受 `In Progress` 和 `Completed`，POST 省略時預設為 `In Progress`。日期輸入格式為 `YYYY-MM-DD`，可用空字串或 `null` 清除。JSON 回傳日期採 ISO 格式。
+任務 API 及登出需要已登入的 Session Cookie。登入、註冊、重設密碼、登出及任務寫入需要 `X-CSRF-Token`。任務列表可使用 `title` 和 `status` 組合篩選。POST 和 PUT 接收 JSON，PUT 保留未提交的欄位。可編輯欄位為 `title`、`description`、`status`、`dueDate`。`status` 接受 `In Progress` 和 `Completed`，POST 省略時預設為 `In Progress`。日期輸入格式為 `YYYY-MM-DD`，可用空字串或 `null` 清除。JSON 回傳日期採 ISO 格式。
 
 | 方法及路徑 | 成功回應 |
 | --- | --- |
 | `GET /api/auth/csrf` | `200`，目前 Session 的 `csrfToken` |
 | `POST /api/auth/register` | `201`，註冊成功訊息 |
 | `POST /api/auth/login` | `200`，登入成功訊息及新的 Session Cookie |
+| `POST /api/auth/reset-password` | `200`，重設成功訊息 |
 | `POST /api/auth/logout` | `204`，銷毀 Session 並清除 Cookie |
 | `GET /api/tasks/:id` | `200`，指定的任務 |
 | `GET /api/tasks` | `200`，任務 JSON 陣列 |
@@ -141,7 +145,9 @@ Compose 依 `Dockerfile` 建置映像檔並啟動 `app` 容器。容器以 `npm 
 | `PUT /api/tasks/:id` | `200`，更新後的任務 |
 | `DELETE /api/tasks/:id` | `200`，包含 `message` 的 JSON |
 
-登入及註冊接收含 `username` 和 `password` 的 JSON。此範例用 `jq` 讀取驗證碼，並用暫存檔保存 Cookie。
+登入及註冊接收含 `username` 和 `password` 的 JSON。重設密碼可用訪客 Session，提交 `username`、`password` 和 `confirmPassword`。使用者名稱去除前後空格後按大小寫比對。新密碼去除前後空格後須至少有 8 個字元，原始輸入最多 72 個位元組，且須與確認密碼完全一致。輸入無效回傳 `400`，找不到帳戶回傳 `404`。
+
+此範例用 `jq` 讀取驗證碼，並用暫存檔保存 Cookie。
 
 ```sh
 BASE=http://localhost:3000
@@ -159,7 +165,7 @@ curl -fsS -b "$COOKIE_JAR" -c "$COOKIE_JAR" -X POST "$BASE/api/auth/logout" \
 rm -f "$COOKIE_JAR"
 ```
 
-錯誤回傳 JSON `error`，欄位驗證錯誤可附上 `fields`。常見狀態包括 `400` 輸入或 ID 無效、`401` 未登入或帳號密碼錯誤、`403` CSRF 驗證碼缺失或無效、`404` 任務不存在或不屬於該帳戶、`409` 使用者名稱重複、`415` 登入或註冊的請求格式非 JSON，以及 `500` 伺服器錯誤。
+錯誤回傳 JSON `error`，欄位驗證錯誤可附上 `fields`。常見狀態包括 `400` 輸入或 ID 無效、`401` 未登入或帳號密碼錯誤、`403` CSRF 驗證碼缺失或無效、`404` 帳戶或任務不存在或任務不屬於該帳戶、`409` 使用者名稱重複、`415` 登入、註冊或重設密碼的請求格式非 JSON，以及 `500` 伺服器錯誤。
 
 切換後，現有帳戶和任務可直接沿用，使用者需重新登入。若 `sessions` 集合已刪除，Session store 會重新建立。舊的 `accesstokens` 紀錄由原有 TTL 索引清理。
 
@@ -169,13 +175,15 @@ rm -f "$COOKIE_JAR"
 | --- | --- |
 | 未登入訪問 `/tasks` 或 API | 網頁轉到登入頁，API 回傳 401 |
 | 輸入錯誤密碼、登入後登出 | 錯誤密碼不能登入，登出後使用舊 Cookie 回傳 `401` |
+| 在另一個瀏覽器重設已登入的帳戶密碼 | 返回登入頁並顯示重設成功。舊密碼及舊 Session 均失效，新密碼可登入並存取原有任務 |
+| 重設時輸入不存在的使用者名稱、新密碼不符合規則或兩次輸入不符，或送出缺少 CSRF 驗證碼的請求 | 分別回傳 `404`、`400` 或 `403`，原有密碼仍可登入 |
 | 新增、編輯、完成、重新開啟及刪除任務 | 列表可在未完成及已完成之間切換，取消刪除會保留任務 |
 | 空白或過長標題、無效日期、錯誤狀態 | 顯示錯誤，資料不會被儲存 |
 | 標題含 `<`、`>` 或 `&` | 顯示為文字 |
 | 使用自行註冊的第二個帳號查看第一個帳號的任務或提交其 ID | 列表看不到他人資料，直接操作回傳 404 |
 | 任務截止日期 | 截止日已過且尚未完成的任務顯示逾期 |
 | 停止並重建容器 | 已有帳號與任務保留，未過期的登入仍有效 |
-| Chrome、Edge，375px／1366px 寬度 | 表單和任務操作可用，鍵盤能切換並操作按鈕 |
+| Chrome、Edge，375px／1366px 寬度 | 表單和任務操作可用，鍵盤可完成密碼重設並操作按鈕 |
 
 ## 提交
 

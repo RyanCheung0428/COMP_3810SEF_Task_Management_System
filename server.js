@@ -74,6 +74,7 @@ async function start() {
   app.get('/', (req, res) => res.redirect(req.isAuthenticated() ? '/tasks' : '/login'));
   app.get('/login', guestPage('login'));
   app.get('/register', guestPage('register'));
+  app.get('/forgot-password', guestPage('forgot-password'));
   app.get('/dashboard', requirePageLogin, (req, res) => res.redirect('/tasks'));
   app.use('/tasks', requirePageLogin, taskRoutes);
   app.use('/api/auth', auth.router);

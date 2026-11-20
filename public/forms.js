@@ -2,7 +2,7 @@ const messageKey = 'taskflow.message';
 const requestError = document.querySelector('#request-error');
 const taskPage = document.querySelector('#task-page');
 const taskForm = document.querySelector('#task-form');
-const guestForm = document.querySelector('[data-auth="login"], [data-auth="register"]');
+const guestForm = document.querySelector('form[data-auth]:not([data-auth="logout"])');
 const logoutForm = document.querySelector('[data-auth="logout"]');
 const hongKongDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Hong_Kong' });
 
@@ -88,12 +88,12 @@ function initializeGuestForm(form) {
     showMessage(errorNotice, '');
     const body = Object.fromEntries(new FormData(form));
     const result = await request(form.action, { method: 'POST', body, authenticated: false });
-    if (form.dataset.auth === 'register') {
-      sessionStorage.setItem(messageKey, result.message);
-      window.location.assign('/login');
+    if (form.dataset.auth === 'login') {
+      window.location.replace('/tasks');
       return;
     }
-    window.location.replace('/tasks');
+    sessionStorage.setItem(messageKey, result.message);
+    window.location.assign('/login');
   }, (error) => showMessage(errorNotice, error.message));
 }
 

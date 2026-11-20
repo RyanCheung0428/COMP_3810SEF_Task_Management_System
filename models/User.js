@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   // Regular queries omit the password hash. The login route requests it explicitly.
   passwordHash: { type: String, required: true, select: false },
+  authVersion: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
 
