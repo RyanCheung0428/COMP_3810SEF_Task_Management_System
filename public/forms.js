@@ -97,15 +97,18 @@ function initializeGuestForm(form) {
   }, (error) => showMessage(errorNotice, error.message));
 }
 
-function listUrl(view) {
-  return view === 'completed' ? '/tasks?view=completed' : '/tasks';
+function taskPageUrl(path, view, searchTitle = '') {
+  const query = new URLSearchParams();
+  if (view === 'completed') query.set('view', 'completed');
+  if (searchTitle) query.set('title', searchTitle);
+  return path + (query.size ? '?' + query.toString() : '');
 }
 
 function taskApi(id) {
   return '/api/tasks' + (id ? '/' + encodeURIComponent(id) : '');
 }
 
-function buildTaskRow(task, view, today) {
+function buildTaskRow(task, view, today, searchTitle) {
   const row = document.querySelector('#task-row').content.firstElementChild.cloneNode(true);
   const completed = task.status === 'Completed';
   row.dataset.taskId = task._id;
@@ -131,14 +134,26 @@ function buildTaskRow(task, view, today) {
   }
 
   row.querySelector('summary').setAttribute('aria-label', 'Actions for ' + task.title);
-  row.querySelector('.task-options-panel a').href =
-    '/tasks/' + encodeURIComponent(task._id) + '/edit' + (view ? '?view=completed' : '');
+  row.querySelector('.task-options-panel a').href = taskPageUrl(
+    '/tasks/' + encodeURIComponent(task._id) + '/edit', view, searchTitle
+  );
   return row;
 }
 
-async function loadTaskList(page) {
-  const tasks = await request('/api/tasks');
-  if (!tasks) return;
+async function loadTaskList(page, searchState) {
+  const version = ++searchState.version;
+  const searchTitle = page.dataset.searchTitle;
+  const query = new URLSearchParams();
+  if (searchTitle) query.set('title', searchTitle);
+  let tasks;
+  try {
+    tasks = await request('/api/tasks' + (query.size ? '?' + query.toString() : ''));
+  } catch (error) {
+    if (version !== searchState.version) return;
+    throw error;
+  }
+  // Ignore an older response, including while a newer query is waiting for its debounce.
+  if (!tasks || version !== searchState.version) return;
   const completed = tasks.filter((task) => task.status === 'Completed');
   const unfinished = tasks.filter((task) => task.status !== 'Completed');
   const visible = page.dataset.view === 'completed' ? completed : unfinished;
@@ -147,15 +162,85 @@ async function loadTaskList(page) {
   page.querySelector('#completed-count').textContent = completed.length;
   page.querySelector('#unfinished-count').textContent = unfinished.length;
   const rows = document.createDocumentFragment();
-  for (const task of visible) rows.append(buildTaskRow(task, page.dataset.view, today));
+  for (const task of visible) rows.append(buildTaskRow(task, page.dataset.view, today, searchTitle));
   list.replaceChildren(rows);
   list.hidden = !visible.length;
-  page.querySelector('.empty').hidden = Boolean(visible.length);
+  const empty = page.querySelector('.empty');
+  empty.querySelector('h2').textContent = searchTitle ? 'No matching tasks'
+    : page.dataset.view === 'completed' ? 'No completed tasks yet' : 'No unfinished tasks';
+  empty.hidden = Boolean(visible.length);
+  showMessage(requestError, '');
 }
 
 function initializeTaskList(page) {
   const notice = page.querySelector('[role="status"]');
   showMessage(notice, consumeMessage());
+  const searchForm = page.querySelector('#task-search');
+  const searchInput = searchForm.elements.title;
+  const clearSearch = page.querySelector('#clear-task-search');
+  const searchState = { version: 0 };
+  let searchTimer;
+  let composing = false;
+
+  const syncSearch = () => {
+    const title = searchInput.value.trim();
+    page.dataset.searchTitle = title;
+    clearSearch.hidden = !searchInput.value;
+    for (const tab of page.querySelectorAll('.stat')) {
+      tab.href = taskPageUrl('/tasks', tab.dataset.view, title);
+    }
+    page.querySelector('#add-task').href = taskPageUrl('/tasks/new', page.dataset.view, title);
+    for (const row of page.querySelectorAll('.task-list [data-task-id]')) {
+      row.querySelector('.task-options-panel a').href = taskPageUrl(
+        '/tasks/' + encodeURIComponent(row.dataset.taskId) + '/edit', page.dataset.view, title
+      );
+    }
+    window.history.replaceState(null, '', taskPageUrl('/tasks', page.dataset.view, title));
+  };
+
+  const reload = async () => {
+    if (composing) return;
+    try {
+      await loadTaskList(page, searchState);
+    } catch (error) {
+      showMessage(requestError, error.message);
+    }
+  };
+
+  const searchNow = () => {
+    clearTimeout(searchTimer);
+    syncSearch();
+    return reload();
+  };
+
+  const scheduleSearch = () => {
+    clearTimeout(searchTimer);
+    searchState.version += 1;
+    syncSearch();
+    if (!composing) searchTimer = setTimeout(searchNow, 300);
+  };
+
+  searchInput.addEventListener('input', scheduleSearch);
+  searchInput.addEventListener('compositionstart', () => {
+    composing = true;
+    clearTimeout(searchTimer);
+    searchState.version += 1;
+  });
+  searchInput.addEventListener('compositionend', () => {
+    composing = false;
+    scheduleSearch();
+  });
+  searchForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (!composing) searchNow();
+  });
+  clearSearch.addEventListener('click', () => {
+    searchInput.value = '';
+    composing = false;
+    searchNow();
+    searchInput.focus();
+  });
+
   let updating = false;
   page.addEventListener('click', async (event) => {
     const button = event.target.closest('[data-task-action]');
@@ -176,7 +261,7 @@ function initializeTaskList(page) {
       if (!result) return;
       showMessage(notice, deleting ? result.message
         : status === 'Completed' ? 'Task completed.' : 'Task reopened.');
-      await loadTaskList(page);
+      await reload();
     } catch (error) {
       showMessage(requestError, error.message);
     } finally {
@@ -184,7 +269,7 @@ function initializeTaskList(page) {
       button.disabled = false;
     }
   });
-  return loadTaskList(page);
+  return reload();
 }
 
 function showFieldErrors(form, errors = {}) {
@@ -213,7 +298,7 @@ async function initializeTaskForm(form) {
     const result = await request(taskApi(id), { method: id ? 'PUT' : 'POST', body });
     if (!result) return;
     sessionStorage.setItem(messageKey, id ? 'Task updated.' : 'Task added.');
-    window.location.assign(listUrl(form.dataset.view));
+    window.location.assign(taskPageUrl('/tasks', form.dataset.view, form.dataset.searchTitle));
   }, (error) => {
     showMessage(requestError, error.fields?._form || error.message);
     showFieldErrors(form, error.fields);

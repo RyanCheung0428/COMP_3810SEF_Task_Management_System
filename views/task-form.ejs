@@ -1,7 +1,7 @@
 <%- include('partials/header', { title: heading }) %>
 <section class="panel form-panel">
   <h1><%= heading %></h1>
-  <form method="post" action="/api/tasks" id="task-form" class="stack" data-task-id="<%= taskId %>" data-view="<%= completed ? 'completed' : '' %>">
+  <form method="post" action="/api/tasks" id="task-form" class="stack" data-task-id="<%= taskId %>" data-view="<%= completed ? 'completed' : '' %>" data-search-title="<%= searchTitle %>">
     <fieldset id="task-fields" class="stack" disabled>
       <div>
         <label for="title">Title</label>
@@ -20,7 +20,7 @@
       </div>
       <div class="actions">
         <button class="button" type="submit">Save task</button>
-        <a class="button button-secondary" href="/tasks<%= completed ? '?view=completed' : '' %>">Cancel</a>
+        <a class="button button-secondary" href="<%= returnUrl %>">Cancel</a>
       </div>
     </fieldset>
   </form>
