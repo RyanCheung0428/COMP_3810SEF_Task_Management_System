@@ -1,7 +1,7 @@
-<%- include('partials/header', { title: 'Error ' + status }) %>
+<%- include('header', { title: 'Error ' + status }) %>
 <section class="panel narrow">
   <h1>Error <%= status %></h1>
   <p><%= message %></p>
   <a class="button" href="/">Back to TaskFlow</a>
 </section>
-<%- include('partials/footer') %>
+<%- include('footer') %>

@@ -1,4 +1,4 @@
-<%- include('partials/header', { title: 'Tasks' }) %>
+<%- include('header', { title: 'Tasks' }) %>
 <div id="task-page" data-view="<%= completed ? 'completed' : '' %>" data-search-title="<%= searchTitle %>">
   <div class="page-heading">
     <form id="task-search" class="task-search" method="get" action="/tasks" role="search">
@@ -52,4 +52,4 @@
     </details>
   </li>
 </template>
-<%- include('partials/footer') %>
+<%- include('footer') %>

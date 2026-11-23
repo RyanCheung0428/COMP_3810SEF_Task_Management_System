@@ -31,8 +31,8 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 | [`views/tasks.ejs`](./views/tasks.ejs) | 提供任務列表、狀態統計和操作按鈕的模板。 |
 | [`views/task-form.ejs`](./views/task-form.ejs) | 提供新增及編輯任務的共用表單。 |
 | [`views/error.ejs`](./views/error.ejs) | 顯示錯誤狀態和訊息。 |
-| [`views/partials/header.ejs`](./views/partials/header.ejs) | 提供共用頁首，載入 CSS 和 JavaScript。 |
-| [`views/partials/footer.ejs`](./views/partials/footer.ejs) | 結束共用的頁面標籤。 |
+| [`views/header.ejs`](./views/header.ejs) | 提供共用頁首，載入 CSS 和 JavaScript。 |
+| [`views/footer.ejs`](./views/footer.ejs) | 結束共用的頁面標籤。 |
 | [`models/User.js`](./models/User.js) | 定義帳戶資料模型，包括使用者名稱、密碼雜湊和登入版本。 |
 | [`models/Task.js`](./models/Task.js) | 定義任務資料模型，包括擁有者、標題、描述、狀態和截止日期。 |
 

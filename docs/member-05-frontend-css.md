@@ -9,7 +9,7 @@
 | 位置 | 用途 |
 | --- | --- |
 | [`public/styles.css`](../public/styles.css) | 定義全站排版、按鈕、表單、任務列表、焦點外框、訊息樣式和小螢幕規則。 |
-| [共用頁首](../views/partials/header.ejs#L5) · [靜態資源設定](../server.js#L45) | EJS 頁面透過頁首載入 `/styles.css`。Express 從 `public` 提供檔案。Viewport 設定讓手機按裝置寬度排版。 |
+| [共用頁首](../views/header.ejs#L5) · [靜態資源設定](../server.js#L45) | EJS 頁面透過頁首載入 `/styles.css`。Express 從 `public` 提供檔案。Viewport 設定讓手機按裝置寬度排版。 |
 | [登入頁](../views/login.ejs#L2) · [註冊頁](../views/register.ejs#L2) · [重設密碼頁](../views/forgot-password.ejs#L2) · [錯誤頁](../views/error.ejs#L2) | 共用置中的 `.panel.narrow`。帳戶表單用 `.stack` 排列欄位和按鈕。 |
 | [任務列表](../views/tasks.ejs#L3) · [任務表單](../views/task-form.ejs#L2) | 標記搜尋列、狀態卡、任務項目和表單欄位，讓 CSS 套用相應樣式。 |
 | [訊息顯示](../public/forms.js#L9) · [任務狀態](../public/forms.js#L119) · [欄位錯誤](../public/forms.js#L275) | JavaScript 更新 `hidden`、`.is-checked` 和 `aria-invalid`，樣式表依這些狀態更新畫面。 |
@@ -26,7 +26,7 @@
 
 | 操作或狀態 | 視覺呈現 |
 | --- | --- |
-| 用 Tab 移動焦點 | `:focus-visible` 加上藍色外框。**Skip to content** 取得焦點後會出現在畫面上，按 Enter 可跳到主要內容。搜尋欄取得鍵盤焦點時亦會改變邊框顏色。 [焦點與跳轉連結](../public/styles.css#L233) · [搜尋欄焦點](../public/styles.css#L85) · [頁面連結](../views/partials/header.ejs#L11) |
+| 用 Tab 移動焦點 | `:focus-visible` 加上藍色外框。**Skip to content** 取得焦點後會出現在畫面上，按 Enter 可跳到主要內容。搜尋欄取得鍵盤焦點時亦會改變邊框顏色。 [焦點與跳轉連結](../public/styles.css#L233) · [搜尋欄焦點](../public/styles.css#L85) · [頁面連結](../views/header.ejs#L11) |
 | 顯示成功訊息或錯誤 | 頁面的 `.notice-success` 用淺綠底，`.notice-error` 用淺紅底。任務表單收到欄位錯誤時，輸入欄加上 `aria-invalid="true"`，CSS 顯示紅色邊框和欄位錯誤文字。訊息清空後，`hidden` 讓提示收起。 [訊息及欄位樣式](../public/styles.css#L247) · [隱藏規則](../public/styles.css#L150) · [欄位錯誤處理](../public/forms.js#L275) |
 | 表單提交或任務操作進行中 | JavaScript 暫時停用觸發操作的按鈕，相應的 `:disabled` 規則降低透明度並顯示等候游標。 [表單提交](../public/forms.js#L65) · [表單按鈕樣式](../public/styles.css#L231) · [任務按鈕樣式](../public/styles.css#L298) |
 | 任務完成或逾期 | 完成後的方框以 `.is-checked` 顯示深綠底和白色勾號。未完成且截止日期已過的任務顯示淺橙底的 **Overdue** 標籤。 [畫面狀態](../public/forms.js#L119) · [完成方框](../public/styles.css#L301) · [逾期標籤](../public/styles.css#L344) |

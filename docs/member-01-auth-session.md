@@ -8,7 +8,7 @@
 
 | 檔案 | 在流程中的工作 |
 | --- | --- |
-| `views/login.ejs`、`views/partials/header.ejs` | 登入表單以 `data-auth="login"` 標記及指定 API 路徑。共用頁首載入 `forms.js`，並提供登入後使用的登出表單。[登入表單](../views/login.ejs#L6) · [共用頁首](../views/partials/header.ejs#L8) |
+| `views/login.ejs`、`views/header.ejs` | 登入表單以 `data-auth="login"` 標記及指定 API 路徑。共用頁首載入 `forms.js`，並提供登入後使用的登出表單。[登入表單](../views/login.ejs#L6) · [共用頁首](../views/header.ejs#L8) |
 | `public/forms.js` | `initialize()` 判斷當前頁面，`handleForm()` 接管提交，`getCsrfToken()` 取得驗證碼，`request()` 處理 Cookie、JSON 和回應。[啟動](../public/forms.js#L308) · [表單](../public/forms.js#L65) · [請求](../public/forms.js#L27) |
 | `server.js` | 設定 Session store 和 Passport 中介軟件，將網站頁面、任務 API 和帳戶 API 分派到各自的路由。[中介軟件與路由掛載](../server.js#L46) |
 | `routes/auth.js`、`models/User.js` | 用 User 模型核對帳密和登入版本，管理 CSRF 驗證碼、登入及登出。[Passport 設定](../routes/auth.js#L29) · [驗證碼端點](../routes/auth.js#L76) · [登入及登出](../routes/auth.js#L114) · [帳戶欄位](../models/User.js#L4) |
@@ -79,7 +79,7 @@ passport.deserializeUser(async (req, id, done) => {
 
 ### 4. 登出及返回頁面
 
-在任務頁或任務表單頁，`initialize()` 顯示共用頁首的導覽，將登出表單交給 `handleForm()`。前端呼叫 `POST /api/auth/logout`，伺服器依次檢查登入和 CSRF，再執行 `req.logout()`、`req.session.destroy()` 和 `res.clearCookie()`。前端把無內容的 `204` 當作成功，`signOut()` 清除暫存提示並返回 `/login`。如瀏覽器從返回快取恢復頁面，`pageshow` 會觸發重載，讓伺服器重新檢查登入。[登出表單](../views/partials/header.ejs#L16) · [伺服器登出](../routes/auth.js#L135) · [前端登出及頁面恢復](../public/forms.js#L308) · [`signOut()`](../public/forms.js#L20)
+在任務頁或任務表單頁，`initialize()` 顯示共用頁首的導覽，將登出表單交給 `handleForm()`。前端呼叫 `POST /api/auth/logout`，伺服器依次檢查登入和 CSRF，再執行 `req.logout()`、`req.session.destroy()` 和 `res.clearCookie()`。前端把無內容的 `204` 當作成功，`signOut()` 清除暫存提示並返回 `/login`。如瀏覽器從返回快取恢復頁面，`pageshow` 會觸發重載，讓伺服器重新檢查登入。[登出表單](../views/header.ejs#L16) · [伺服器登出](../routes/auth.js#L135) · [前端登出及頁面恢復](../public/forms.js#L308) · [`signOut()`](../public/forms.js#L20)
 
 ## 逐步追蹤一次登入和登出
 

@@ -1,4 +1,4 @@
-<%- include('partials/header', { title: heading }) %>
+<%- include('header', { title: heading }) %>
 <section class="panel form-panel">
   <h1><%= heading %></h1>
   <form method="post" action="/api/tasks" id="task-form" class="stack" data-task-id="<%= taskId %>" data-view="<%= completed ? 'completed' : '' %>" data-search-title="<%= searchTitle %>">
@@ -25,4 +25,4 @@
     </fieldset>
   </form>
 </section>
-<%- include('partials/footer') %>
+<%- include('footer') %>

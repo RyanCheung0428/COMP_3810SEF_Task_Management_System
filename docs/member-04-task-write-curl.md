@@ -157,7 +157,7 @@ cURL 先呼叫 `GET /api/auth/csrf` 取得訪客 Cookie 和 CSRF 驗證碼，再
 ```
 
 1. `request` 用 `data.error` 建立 Error，附上 `data.fields` 後拋出。`handleForm` 捕捉後把錯誤交給表單的 `onError`。 [建立錯誤物件](../public/forms.js#L56) · [捕捉錯誤](../public/forms.js#L65)
-2. `onError` 把一般錯誤寫到頁首的 `#request-error`。若回應含 `fields._form`，頁首優先顯示它。例如 PUT 的 JSON 是 `{}` 時，`fields._form` 是 **Provide at least one editable task field.**。 [表單錯誤優先次序](../public/forms.js#L302) · [頁首錯誤位置](../views/partials/header.ejs#L23) · [空更新錯誤](../task-input.js#L63)
+2. `onError` 把一般錯誤寫到頁首的 `#request-error`。若回應含 `fields._form`，頁首優先顯示它。例如 PUT 的 JSON 是 `{}` 時，`fields._form` 是 **Provide at least one editable task field.**。 [表單錯誤優先次序](../public/forms.js#L302) · [頁首錯誤位置](../views/header.ejs#L23) · [空更新錯誤](../task-input.js#L63)
 3. `showFieldErrors` 以 `name="title"` 取得 `fields.title`，為輸入欄加上 `aria-invalid="true"`，再循 `aria-describedby="title-error"` 找到 `#title-error` 並顯示訊息。再次送出時會先清除舊的頁首和欄位錯誤，送出按鈕由 `finally` 恢復。 [欄位與錯誤元素](../views/task-form.ejs#L7) · [顯示及清除欄位錯誤](../public/forms.js#L275) · [送出前清除](../public/forms.js#L294) · [恢復按鈕](../public/forms.js#L75)
 
 ### 排查停在哪一步

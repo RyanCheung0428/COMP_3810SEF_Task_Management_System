@@ -29,8 +29,8 @@
 | [`views/tasks.ejs`](../views/tasks.ejs) | 提供狀態統計、任務列表和各項任務操作的模板。 |
 | [`views/task-form.ejs`](../views/task-form.ejs) | 提供新增及編輯任務共用表單，以及顯示欄位錯誤的位置。 |
 | [`views/error.ejs`](../views/error.ejs) | 顯示錯誤狀態碼、訊息和返回系統的連結。 |
-| [`views/partials/header.ejs`](../views/partials/header.ejs) | 各頁共用的頁首模板，設定網頁標題、載入 `styles.css` 和 `forms.js`，並開啟主要內容區。登入後會顯示任務列表連結和登出表單。 |
-| [`views/partials/footer.ejs`](../views/partials/footer.ejs) | 各頁在內容末端引入此模板，結束頁首模板開啟的 `<main>`、`<body>` 和 `<html>` 標籤。 |
+| [`views/header.ejs`](../views/header.ejs) | 各頁共用的頁首模板，設定網頁標題、載入 `styles.css` 和 `forms.js`，並開啟主要內容區。登入後會顯示任務列表連結和登出表單。 |
+| [`views/footer.ejs`](../views/footer.ejs) | 各頁在內容末端引入此模板，結束頁首模板開啟的 `<main>`、`<body>` 和 `<html>` 標籤。 |
 | [`public/forms.js`](../public/forms.js) | 透過同源 Session Cookie 和 CSRF 驗證碼提交 JSON 表單，載入及顯示任務、分類計數和欄位錯誤。以香港時間判斷任務是否逾期。 |
 | [`public/styles.css`](../public/styles.css) | 由共用頁首載入的樣式表，控制表單、按鈕、任務列表和錯誤訊息的外觀。它設定鍵盤焦點樣式，並按螢幕寬度調整間距。 |
 

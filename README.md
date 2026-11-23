@@ -31,8 +31,8 @@ COMP 3810SEF group project for the Fall 2026 semester. TaskFlow lets users log i
 | [`views/tasks.ejs`](./views/tasks.ejs) | Provides the template for the task list, status counts, and task controls. |
 | [`views/task-form.ejs`](./views/task-form.ejs) | Provides the shared form for creating and editing tasks. |
 | [`views/error.ejs`](./views/error.ejs) | Displays the error status and message. |
-| [`views/partials/header.ejs`](./views/partials/header.ejs) | Provides the shared page header and loads CSS and JavaScript. |
-| [`views/partials/footer.ejs`](./views/partials/footer.ejs) | Closes the shared page layout tags. |
+| [`views/header.ejs`](./views/header.ejs) | Provides the shared page header and loads CSS and JavaScript. |
+| [`views/footer.ejs`](./views/footer.ejs) | Closes the shared page layout tags. |
 | [`models/User.js`](./models/User.js) | Defines the account schema, including the username, password hash, and login version. |
 | [`models/Task.js`](./models/Task.js) | Defines the task schema, including the owner, title, description, status, and due date. |
 
