@@ -2,7 +2,7 @@
 
 ## 負責範圍
 
-讓使用者由登入頁進入私人任務頁，說明瀏覽器如何用 Cookie 延續登入、Passport 如何恢復身分，以及頁面、API 和資料庫各自在哪一層檢查權限。
+負責登入、登出及存取控制，包括登入表單、帳密核對、Cookie 和 Session，以及受保護頁面和 API 的登入檢查。組員 2 負責註冊及重設密碼，組員 6 負責 Cloud Run 的 HTTPS 及執行設定。 [帳戶流程](./member-02-registration-password-reset.md) · [Cloud Run 部署](./member-06-cloud-run-deployment.md)
 
 ## 程式碼地圖
 
@@ -41,7 +41,7 @@ sequenceDiagram
 
 ### 1. 伺服器先處理 Session，再選擇路由
 
-Express 在靜態資源之後設定 `Cache-Control: no-store`，再依序執行 `express-session`、`passport.initialize()` 和 `passport.session()`。瀏覽器的 `taskflow.sid` Cookie 帶有使用 `SESSION_SECRET` 簽署的 Session ID。伺服器透過 `MongoStore` 用這個 ID 找回 Session 資料。`saveUninitialized: false` 讓新訪客 Session 在取得驗證碼等修改發生後才保存。`resave: false` 讓未修改的 Session 省去完整重寫。Cookie 設為 `HttpOnly`、`SameSite=Lax` 和兩小時有效期，`Secure` 由 `COOKIE_SECURE` 控制。[中介軟件次序](../server.js#L43) · [Cookie 選項](../routes/auth.js#L9) · [組員 2 的資料庫及 Session store](./member-02-mongodb-accounts.md)
+Express 在靜態資源之後設定 `Cache-Control: no-store`，再依序執行 `express-session`、`passport.initialize()` 和 `passport.session()`。瀏覽器的 `taskflow.sid` Cookie 帶有使用 `SESSION_SECRET` 簽署的 Session ID。伺服器透過 `MongoStore` 用這個 ID 找回 Session 資料。`saveUninitialized: false` 讓新訪客 Session 在取得驗證碼等修改發生後才保存。`resave: false` 讓未修改的 Session 省去完整重寫。Cookie 設為 `HttpOnly`、`SameSite=Lax` 和兩小時有效期，`Secure` 由 `COOKIE_SECURE` 控制。 [中介軟件次序](../server.js#L43) · [Cookie 選項](../routes/auth.js#L9)
 
 `GET /` 依登入狀態轉往 `/tasks` 或 `/login`。`guestPage()` 為訪客渲染登入、註冊或重設密碼頁，已登入的使用者開啟這些網址會轉往任務頁。`/dashboard` 通過頁面登入檢查後也轉往 `/tasks`。[頁面入口](../server.js#L65)
 
@@ -140,6 +140,8 @@ passport.deserializeUser(async (req, id, done) => {
 
 ## 示範與口頭講解
 
+按本機啟動指引啟動網站，並準備自己註冊的測試帳戶。 [本機啟動指引](./setup.md)
+
 1. 在未登入的無痕視窗開啟 `/tasks`，畫面會轉到 `/login`。直接開啟 `/api/tasks`，會看到 `401` 及 `Please sign in first.`
 2. 開啟開發者工具的 Network 面板並保留記錄。用自己建立的測試帳戶先輸入錯誤密碼，再輸入正確密碼。觀察登入端點先回傳 `401`，成功時回傳 `200`，重新整理任務頁後仍可查看任務。
 3. 按 **Log out**。觀察已登入頁面首次寫入前取得驗證碼，以及登出回傳 `204`。再次開啟 `/tasks`，確認回到登入頁。[cURL 示範中的 Cookie 和驗證碼流程](../README.zh-Hant.md#curl-示範)
@@ -153,5 +155,5 @@ passport.deserializeUser(async (req, id, done) => {
 | 登入失敗後，為甚麼可以直接再試一次？ | `handleForm()` 在 `finally` 清除提交標記和恢復按鈕。帳密錯誤的 `401` 由訪客表單的 `onError` 顯示。訪客 Session 仍可用時，下一次提交沿用頁面已取得的驗證碼。[表單回呼](../public/forms.js#L65) · [訪客錯誤顯示](../public/forms.js#L82) |
 | 登入後為甚麼要重新取驗證碼？ | 登入回呼在新 Session 生成新值。比較 Network 中的請求次序即可見訪客第一次取碼在登入前，新的取碼在登入後第一次寫入前。[登入時更新驗證碼](../routes/auth.js#L125) · [共用寫入請求](../public/forms.js#L41) |
 | `POST /api/auth/login` 顯示 `200`，為甚麼還要檢查 `GET /tasks`？ | `200` 表明當次帳密驗證和登入回呼成功。`GET /tasks` 檢查瀏覽器有帶新 Cookie，伺服器也能從 store 恢復身分。Network 可依次核對回應狀態、Cookie 是否已更換，以及下一個請求有否帶上 Cookie。[Session 中介軟件](../server.js#L51) · [頁面保護](../server.js#L65) |
-| `401` 和 `404` 各由哪一層回應？ | 受保護 API 的 `401` 由 `requireLogin()` 回應。指定任務的 `404` 可由 `Task.findOne()` 找不到同時符合任務 ID 和擁有者 ID 的文件而觸發。[登入檢查](../routes/auth.js#L51) · [單筆任務路由](../routes/api.js#L30) · [組員 5 的 API 狀態碼講解](./member-05-rest-api-curl.md) |
+| `401` 和 `404` 各由哪一層回應？ | 受保護 API 的 `401` 由 `requireLogin()` 回應。指定任務的 `404` 可由 `Task.findOne()` 找不到同時符合任務 ID 和擁有者 ID 的文件而觸發。 [登入檢查](../routes/auth.js#L51) · [單筆任務路由](../routes/api.js#L30) · [組員 4 的 cURL 示範](./member-04-task-write-curl.md) |
 | 前端按登出後沒有導頁，應從哪裏開始看？ | 先在 Network 看取碼及登出有否送出。登出收到 `403` 時，前端會清除取碼快取並顯示錯誤。收到 `204` 時，檢查 `request()` 是否走到 `return true`，以及登出回呼是否呼叫 `signOut()`。[回應分支](../public/forms.js#L49) · [登出回呼](../public/forms.js#L317) |

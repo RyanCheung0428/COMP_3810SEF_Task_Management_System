@@ -1,6 +1,8 @@
-# 使用 Docker 與 MongoDB Atlas 啟動
+# 使用 Docker Compose 與 MongoDB Atlas 在本機啟動
 
 Docker Compose 負責建置和啟動 TaskFlow。帳戶、任務和登入 Session 儲存在 MongoDB Atlas 的 `taskflow` 資料庫。
+
+雲端部署由組員 6 負責。Cloud Run 使用同一份 Dockerfile 建置容器，並透過 Secret Manager 設定執行環境。 [Cloud Run 部署指引](./member-06-cloud-run-deployment.md)
 
 ## 準備 Atlas 連線
 

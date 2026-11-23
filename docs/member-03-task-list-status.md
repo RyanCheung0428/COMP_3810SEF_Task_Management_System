@@ -1,37 +1,35 @@
-# 組員 3｜任務列表及狀態切換
+# 組員 3｜任務列表、搜尋、篩選、完成及重開
 
 ## 負責範圍
 
-由登入後開啟 Tasks 頁開始，解釋搜尋和分頁條件如何傳遞、任務如何從資料庫顯示在列表，以及如何完成或重新開啟任務。
+負責登入後的 **Tasks** 頁、即時標題搜尋、狀態篩選、計數，以及完成和重開操作。狀態變更後，頁面沿用列表查詢流程重新載入資料並更新兩張狀態卡。完成和重開使用組員 4 維護的任務更新 API。 [任務寫入及 cURL 示範](./member-04-task-write-curl.md)
 
 ## 程式碼地圖
 
 | 檔案 | 接收、處理及輸出 |
 | --- | --- |
-| [`server.js`](../server.js#L65) | 為 `/tasks` 檢查頁面登入狀態，並為 `/api/tasks` 設定 API 的登入及寫入驗證。 |
+| [`server.js`](../server.js#L65) | 檢查任務列表頁和 API 的登入狀態。 |
 | [`routes/tasks.js`](../routes/tasks.js#L9) | 從網址讀取 `title` 和 `view`，設定 EJS 可讀取的 `res.locals` 和各個返回連結。 |
-| [`views/tasks.ejs`](../views/tasks.ejs#L2) | 輸出搜尋欄、兩張狀態卡、空列表提示及 `#task-row` 模板。頁首以 `defer` 載入瀏覽器程式。 [頁首模板](../views/partials/header.ejs#L8) |
-| [`public/forms.js`](../public/forms.js#L175) | `initializeTaskList` 接管搜尋和按鈕事件，透過 `loadTaskList` 取資料，再把可見任務各交給 `buildTaskRow` 繪製。 |
-| [`routes/api.js`](../routes/api.js#L18) | 讀取列表查詢及登入者 ID，呼叫 `readTaskFilters` 後用 Task 模型查詢 MongoDB。 |
+| [`views/tasks.ejs`](../views/tasks.ejs#L2) | 輸出搜尋欄、兩張狀態卡、空列表提示及含狀態按鈕的 `#task-row` 模板。 |
+| [`public/forms.js`](../public/forms.js#L175) | `initializeTaskList` 綁定搜尋及狀態按鈕事件，透過 `loadTaskList` 取資料，再把可見任務各交給 `buildTaskRow` 繪製。 |
+| [任務查詢](../routes/api.js#L18) · [任務更新](../routes/api.js#L48) | GET 按登入者 ID 及篩選條件查詢 MongoDB。PUT 驗證提交的欄位，用登入者 ID 和任務 ID 定位並更新同一筆資料。 |
 | [`task-input.js`](../task-input.js#L71) · [`models/Task.js`](../models/Task.js#L20) | 前者把搜尋文字和狀態轉為查詢條件或欄位錯誤，後者定義任務欄位及 `userId`、`createdAt` 複合索引。 |
 
 ## 操作及請求流程
 
 ```mermaid
 flowchart LR
-    Page["GET /tasks<br/>頁面路由 → EJS"] --> Browser["forms.js<br/>讀取分頁與搜尋狀態"]
+    Page["GET /tasks<br/>頁面路由 → EJS"] --> Browser["forms.js<br/>讀取狀態檢視與搜尋狀態"]
     Browser --> API["GET /api/tasks<br/>驗證篩選條件"]
     API --> DB["Task 模型<br/>查詢登入者的任務"]
     DB --> API
     API --> Render["forms.js<br/>分類、計數和繪製"]
-    Render --> Toggle["完成或重新開啟<br/>PUT 更新 status"]
-    Toggle --> Browser
 ```
 
 ### 開啟頁面及載入資料
 
-1. `GET /tasks` 先經過 `requirePageLogin`，未登入會轉到 `/login`。登入後，頁面路由用 `readTaskFilters` 驗證網址中的 `title`，整理成 `searchTitle`。只有 `view=completed` 會選取 **Completed**，其餘情況顯示 **In progress**。路由把 `completed`、`searchTitle` 和分頁連結放進 `res.locals`，再渲染 Tasks 模板。`viewQuery` 是加在新增連結上的查詢字串，`returnUrl` 則是表單的返回連結。 [登入檢查](../server.js#L65) · [頁面路由](../routes/tasks.js#L9)
-2. EJS 用 locals 預填搜尋欄和連結，並把分頁及關鍵字存入 `#task-page` 的 `data-view` 和 `data-search-title`。瀏覽器的 `initialize` 找到 `#task-page` 後呼叫 `initializeTaskList`，讀取上次新增或編輯後留在 `sessionStorage` 的成功提示，綁定事件，再用 `reload` 進行第一次載入。 [EJS 欄位](../views/tasks.ejs#L2) · [初始化入口](../public/forms.js#L308) · [列表初始化及首次載入](../public/forms.js#L175) · [讀取後清除提示](../public/forms.js#L14)
+1. `GET /tasks` 先經過 `requirePageLogin`，未登入會轉到 `/login`。登入後，頁面路由用 `readTaskFilters` 驗證網址中的 `title`，整理成 `searchTitle`。只有 `view=completed` 會選取 **Completed**，其餘情況顯示 **In progress**。路由把 `completed`、`searchTitle` 和狀態檢視連結放進 `res.locals`，再渲染 Tasks 模板。`viewQuery` 是加在新增連結上的查詢字串，`returnUrl` 則是表單的返回連結。 [登入檢查](../server.js#L65) · [頁面路由](../routes/tasks.js#L9)
+2. EJS 用 locals 預填搜尋欄和連結，並把狀態檢視及關鍵字存入 `#task-page` 的 `data-view` 和 `data-search-title`。瀏覽器的 `initialize` 找到 `#task-page` 後呼叫 `initializeTaskList`，讀取上次新增或編輯後留在 `sessionStorage` 的成功提示，綁定事件，再用 `reload` 進行第一次載入。 [EJS 欄位](../views/tasks.ejs#L2) · [初始化入口](../public/forms.js#L308) · [列表初始化及首次載入](../public/forms.js#L175) · [讀取後清除提示](../public/forms.js#L14)
 3. `loadTaskList` 從 `page.dataset.searchTitle` 讀到關鍵字，用 `URLSearchParams` 組成 `GET /api/tasks?title=…`。空白搜尋省略 `title`。請求自動附上同源 Session Cookie。頁面上的兩張卡需要從同一份結果計數，因此這個請求涵蓋兩種狀態。直接呼叫 API 時可額外加上 `status=In%20Progress` 或 `status=Completed`。 [組合查詢網址](../public/forms.js#L143) · [請求函式](../public/forms.js#L41) · [API 狀態篩選](../task-input.js#L93)
 4. `readTaskFilters(req.query)` 檢查 `title` 和 `status` 是否各為單一字串，再去除首尾空白。標題上限是 120 個字元。有標題時會先轉義 `[`、`.` 等正則表達式符號，然後用 `i` 選項作不分大小寫的部分比對。合法的狀態條件可和標題條件一併套用。驗證失敗回傳 `400` 和 `fields`。 [篩選驗證](../task-input.js#L71) · [錯誤回應](../routes/api.js#L18)
 
@@ -58,14 +56,14 @@ return res.json(tasks);
 2. **DOM 狀態進入查詢。** `loadTaskList` 讀取 `dataset.searchTitle`，發出 `GET /api/tasks?title=report+%5Bq1%5D`。`readTaskFilters` 產生 `/report \[q1\]/i`，所以方括號也要在標題中出現。API 將正則表達式和 `userId: req.user.id` 合成查詢，再按 `createdAt: -1` 排序。任務 D 因擁有者被排除，C 因標題被排除，JSON 陣列依次回傳 B、A。 [組合查詢](../public/forms.js#L143) · [轉義與比對](../task-input.js#L85) · [資料庫查詢](../routes/api.js#L24)
 3. **JSON 進入畫面。** 已完成及未完成各有一筆，兩張卡各顯示 1。此時 `data-view` 為 `completed`，列表只畫 B。切換到 **In progress** 時，連結保留 `title`、省略 `view`。同一查詢仍取回 B、A，但瀏覽器改畫 A，並因香港當天已過截止日而顯示 **Overdue**。 [狀態連結](../views/tasks.ejs#L18) · [分類與繪製](../public/forms.js#L156) · [截止日期顯示](../public/forms.js#L127)
 
-若 REST 呼叫者在同一請求加上 `status=Completed`，MongoDB 會同時要求標題及狀態相符，結果只剩 B。列表頁使用網址的 `view` 來選擇要繪製的分頁，因此仍會取得 A 來計算未完成數量。 [狀態篩選](../task-input.js#L93) · [列表請求與計數](../public/forms.js#L143)
+若 REST 呼叫者在同一請求加上 `status=Completed`，MongoDB 會同時要求標題及狀態相符，結果只剩 B。列表頁使用網址的 `view` 來選擇要繪製的狀態檢視，因此仍會取得 A 來計算未完成數量。 [狀態篩選](../task-input.js#L93) · [列表請求與計數](../public/forms.js#L143)
 
-### 搜尋、分頁及畫面更新
+### 搜尋、狀態檢視及畫面更新
 
-1. `syncSearch` 修剪搜尋文字、更新 `data-search-title` 和清除按鈕，再透過 `taskPageUrl` 重組兩張狀態卡、**Add task** 和現有 **Edit** 連結。它亦用 `history.replaceState` 更新目前網址，讓重新整理、切換分頁和從表單返回時可保留搜尋條件。按狀態卡會用該卡的 `view` 開啟同一個列表頁。 [網址產生](../public/forms.js#L100) · [同步搜尋及連結](../public/forms.js#L185)
+1. `syncSearch` 修剪搜尋文字、更新 `data-search-title` 和清除按鈕，再透過 `taskPageUrl` 重組兩張狀態卡、**Add task** 和現有 **Edit** 連結。它亦用 `history.replaceState` 更新目前網址，讓重新整理、切換狀態檢視和從表單返回時可保留搜尋條件。按狀態卡會開啟同一個列表頁，由網址的 `view` 決定選取的狀態。 [網址產生](../public/forms.js#L100) · [同步搜尋及連結](../public/forms.js#L185)
 2. 一般輸入每次重設 300 毫秒計時器。中文輸入法開始組字時，程式會取消計時並使舊請求失效，待選字完成後才重新計時。未在組字時按 Enter 會立即查詢。按清除按鈕會清空搜尋欄，立即重查並把焦點放回搜尋欄。 [輸入及清除事件](../public/forms.js#L216)
 3. `loadTaskList` 發出請求前記下新增的版本號，收到結果或查詢錯誤時，檢查版本是否仍相同。輸入一有變動就更新版本，即使下一次查詢仍在等 300 毫秒，較舊的結果或錯誤都不會覆蓋目前列表。 [版本比對](../public/forms.js#L143)
-4. 新結果按 `status === 'Completed'` 分成已完成和未完成兩組。瀏覽器先寫入兩張卡的數量，再按 `data-view` 選取其中一組，用 `DocumentFragment` 組好該組任務列後一次取代列表。若該分頁沒有相符項目，顯示對應的空列表提示。有關鍵字時顯示 **No matching tasks**。 [分類、計數和空列表](../public/forms.js#L156)
+4. 新結果按 `status === 'Completed'` 分成已完成和未完成兩組。瀏覽器先寫入兩張卡的數量，再按 `data-view` 選取其中一組，用 `DocumentFragment` 組好該組任務列後一次取代列表。若該狀態檢視沒有相符項目，顯示對應的空列表提示。有關鍵字時顯示 **No matching tasks**。 [分類、計數和空列表](../public/forms.js#L156)
 5. `buildTaskRow` 複製 EJS 的 `#task-row`，把 `_id` 和 `status` 存在每列的 `data-task-id` 和 `data-status`。標題和描述按純文字填入。完成狀態決定按鈕標籤及勾號。若有到期日，程式用 ISO 日期首十個字元顯示日期，並跟香港當天日期比較。只有未完成且早於當天的任務顯示 **Overdue**。 [任務列模板](../views/tasks.ejs#L34) · [任務列繪製](../public/forms.js#L111) · [香港時區設定](../public/forms.js#L7)
 
 計時與版本是兩個檢查點。`clearTimeout` 取消未發出的搜尋，版本號則讓已在等回應的舊查詢失效。 [計時處理](../public/forms.js#L216)
@@ -109,24 +107,11 @@ try {
 if (!tasks || version !== searchState.version) return;
 ```
 
-### 完成或重新開啟任務
+### 完成及重開任務
 
-1. 列表的點擊處理器定位 `[data-task-action]` 和所屬任務列。有更新進行中便略過新操作。開始處理時暫時停用被點擊的按鈕並清掉舊提示。 [按鈕事件](../public/forms.js#L244)
-2. 點擊狀態按鈕會依 `data-status` 算出下一個值，並以 `PUT /api/tasks/:id` 傳送只包含 `status` 的 JSON。請求附上 Session Cookie 和 CSRF 驗證碼。API 驗證狀態後，用任務 ID 和登入者 ID 更新該筆資料。其餘欄位由局部更新保留。刪除按鈕共用同一個點擊處理器。 [發送更新](../public/forms.js#L257) · [請求函式](../public/forms.js#L41) · [局部更新](../routes/api.js#L48) · [組員 4 的刪除流程](member-04-task-edit-delete-validation.md)
-3. API 成功回應後，頁面顯示 **Task completed.** 或 **Task reopened.**，呼叫 `reload` 以當前搜尋條件重新取回資料。若當時正在組字，重查會待選字完成後由搜尋流程觸發。新結果會重算數量，並按目前分頁決定是否顯示這筆任務。點擊處理器最後解除忙碌狀態並恢復按鈕。 [組字檢查](../public/forms.js#L201) · [成功提示、重查和按鈕復原](../public/forms.js#L261)
-
-#### 從一次點擊追蹤到重查
-
-以表中的任務 A 為例，假設它的 MongoDB ID 是 `665f000000000000000000a1`，並且目前停留在 **In progress**。 [任務列的資料屬性](../public/forms.js#L111)
-
-| 階段 | 實際傳遞或改變的值 |
-| --- | --- |
-| 按鈕 → 任務列 | 按鈕的 `data-task-action` 是 `toggle`，所在任務列的 `dataset.taskId` 是 A 的 ID，`dataset.status` 是 `In Progress`。 [讀取按鈕及任務列](../public/forms.js#L245) |
-| 瀏覽器 → API | `taskApi` 組成 `/api/tasks/665f000000000000000000a1`。請求是 PUT，JSON 為 `{"status":"Completed"}`。`request` 取得或重用 CSRF 驗證碼，並附上同源 Cookie。 [API 路徑](../public/forms.js#L107) · [請求標頭](../public/forms.js#L27) · [狀態請求](../public/forms.js#L257) |
-| API → MongoDB | `validateTask` 回傳 `task: { status: 'Completed' }` 和空的 `errors`。`$set` 將該狀態套用到同時符合任務 ID 和登入者 ID 的紀錄，API 回傳 `200` 和更新後的任務。 [欄位驗證](../task-input.js#L14) · [寫入條件](../routes/api.js#L48) |
-| 回應 → 列表 | 功能顯示 **Task completed.**，以 `title=report+%5Bq1%5D` 重查。新結果仍有 B、A，兩筆均已完成，所以數量變成未完成 0、已完成 2，目前列表變空。 [更新後重查](../public/forms.js#L261) · [分類與提示](../public/forms.js#L156) |
-
-切換到 **Completed** 後，任務 A 的勾號會顯示，按鈕標籤改為 **Reopen task**，逾期標籤隱藏。點擊後送出 `{"status":"In Progress"}`。重查會恢復各 1 筆，A 回到 **In progress** 並再次顯示 **Overdue**。 [勾號、標籤及逾期](../public/forms.js#L119) · [切換狀態](../public/forms.js#L257)
+1. 點擊狀態按鈕時，`initializeTaskList` 從任務列讀取 `data-task-id` 和 `data-status`。未完成的任務提交 `{"status":"Completed"}`，已完成的任務提交 `{"status":"In Progress"}`。處理期間，點擊的按鈕會暫時停用，其他列表寫入事件會被略過。 [列表操作](../public/forms.js#L244)
+2. 前端透過 `PUT /api/tasks/:id` 送出 JSON、同源 Session Cookie 和 `X-CSRF-Token`。API 驗證狀態後，以任務 ID 和登入者 ID 找到該筆任務，並用 `$set` 更新提交的 `status`。原有標題、描述及截止日期都會保留。成功時回傳 `200` 和更新後的任務。 [共用請求函式](../public/forms.js#L41) · [更新路由](../routes/api.js#L48)
+3. 畫面顯示 **Task completed.** 或 **Task reopened.**，按目前搜尋條件重新查詢。兩張狀態卡的數字一併更新，任務會出現在對應的狀態檢視。若正在以中文輸入法組字，搜尋流程會在組字完成後重新查詢。處理結束後，程式會解除寫入鎖定。 [重查及組字檢查](../public/forms.js#L201) · [成功提示及解除鎖定](../public/forms.js#L261)
 
 ## 失敗時會發生甚麼
 
@@ -135,18 +120,21 @@ if (!tasks || version !== searchState.version) return;
 | 頁面網址的 `title` 無效 | 頁面路由回傳 `400` 並渲染錯誤頁。 [頁面查詢驗證](../routes/tasks.js#L9) |
 | API 的搜尋條件無效 | API 回傳 `400` 及欄位錯誤，`reload` 將目前查詢的錯誤顯示在頁首。成功重查會清除該提示。 [API 驗證](../routes/api.js#L19) · [畫面錯誤處理](../public/forms.js#L201) |
 | Session 失效 | API 回傳 `401`，前端清除暫存提示並轉到 `/login`。 [登入中介層](../routes/auth.js#L51) · [前端跳轉](../public/forms.js#L20) · [請求處理](../public/forms.js#L49) |
-| 更新被拒或連線失敗 | 頁首顯示錯誤，點擊處理器恢復按鈕。若收到 `403`，共用請求函式會清除已快取的 CSRF 驗證碼，下次寫入時重新取得。 [請求錯誤處理](../public/forms.js#L49) · [按鈕復原](../public/forms.js#L265) |
+| 狀態更新的輸入無效、驗證碼不符或找不到該帳戶名下的任務 | 分別回傳 `400`、`403` 或 `404`。前端顯示錯誤並恢復按鈕。`403` 會清除快取的驗證碼，讓下次寫入時重新取得。 [更新路由](../routes/api.js#L48) · [驗證碼及請求處理](../public/forms.js#L49) · [操作錯誤處理](../public/forms.js#L265) |
+| 狀態已更新，但隨後的列表查詢失敗 | 成功提示可與重查錯誤同時顯示。列表保留上次成功繪製的結果，重新整理可核對已儲存的狀態。 [重查錯誤](../public/forms.js#L201) · [操作後重查](../public/forms.js#L261) |
 
-### 排查畫面時可問的三個問題
+### 排查畫面
 
-- **為甚麼顯示 No matching tasks，但另一張卡有數字？** 先看 `data-view`。空提示取決於目前分頁的 `visible.length`，兩張卡分別取自同一搜尋結果的兩組數量。有搜尋文字時即使另一組有資料，當前分頁沒有結果仍顯示 **No matching tasks**。沒有搜尋文字時，則按分頁顯示 **No completed tasks yet** 或 **No unfinished tasks**。 [空列表條件](../public/forms.js#L156)
-- **網址已改，列表為甚麼還未改？** `syncSearch` 在輸入事件中已更新網址和連結。列表等待新請求回來才會替換。在瀏覽器的 **Network** 面板可比對最新 GET 的 `title`，再檢查回應中的 `status` 與目前分頁。 [網址同步](../public/forms.js#L185) · [等待及繪製](../public/forms.js#L143)
-- **為甚麼成功提示和錯誤提示同時出現？** PUT 和隨後的 GET 是兩個請求。若 PUT 已儲存成功，頁面先顯示成功提示。若列表重查失敗，`reload` 會另外顯示請求錯誤，列表保留上次成功繪製的內容。 [重查錯誤](../public/forms.js#L201) · [更新及提示次序](../public/forms.js#L261)
+- **為甚麼顯示 No matching tasks，但另一張卡有數字？** 先看 `data-view`。空提示取決於目前狀態檢視的 `visible.length`，兩張卡分別取自同一搜尋結果的兩組數量。有搜尋文字時即使另一組有資料，當前狀態檢視沒有結果仍顯示 **No matching tasks**。沒有搜尋文字時，則按狀態檢視顯示 **No completed tasks yet** 或 **No unfinished tasks**。 [空列表條件](../public/forms.js#L156)
+- **網址已改，列表為甚麼還未改？** `syncSearch` 在輸入事件中已更新網址和連結。列表等待新請求回來才會替換。在瀏覽器的 **Network** 面板可比對最新 GET 的 `title`，再檢查回應中的 `status` 與目前狀態檢視。 [網址同步](../public/forms.js#L185) · [等待及繪製](../public/forms.js#L143)
 
 ## 示範與口頭講解
 
-1. 用新建的測試帳戶新增 `ListDemo Alpha` 和 `ListDemo Beta`。把 Alpha 的截止日期設為香港今天之前，先完成 Beta。在 **In progress** 搜尋 `listdemo`，兩張卡各顯示 1，列表只顯示 Alpha 及 **Overdue**。
-2. 點一下 Alpha 左邊的按鈕，展示 **Task completed.**、兩張卡更新為 0 和 2，以及 Alpha 從 **In progress** 消失。
-3. 切換到 **Completed** 並重新整理。網址仍含 `view=completed` 和 `title=listdemo`。重新開啟 Alpha 後，兩張卡回到各 1。最後試一個沒有結果的關鍵字，再按清除按鈕恢復列表。
+在本機啟動 TaskFlow，註冊一個全新的測試帳戶並登入。 [本機啟動指引](./setup.md)
 
-> 講解時先指出 `view` 在哪裏決定要顯示哪一組任務，再說明搜尋為何會取回兩種狀態。以連續輸入示範 300 毫秒計時器，解釋版本號如何避免舊回應蓋過新結果。最後點擊 Alpha，沿着 `data-task-id`、PUT 路由和 `reload` 講清楚更新及重畫的順序。
+1. 新增 `ListDemo Alpha` 和 `ListDemo Beta`。把 Alpha 的截止日期設為香港今天之前，並先在列表將 Beta 標為完成。
+2. 在 **In progress** 搜尋 `listdemo`，兩張卡各顯示 1，列表只顯示 Alpha 及 **Overdue**。切換到 **Completed** 並重新整理，列表顯示 Beta，網址仍含 `view=completed` 和 `title=listdemo`。
+3. 在瀏覽器的 **Network** 面板觀察連續輸入後的 GET 和 `title` 參數。試一個沒有結果的關鍵字，再按清除按鈕，確認焦點回到搜尋欄。
+4. 搜尋 `listdemo` 並回到 **In progress**，將 Alpha 標為完成。確認出現 **Task completed.**，未完成及已完成的數量分別變為 0 和 2。切到 **Completed** 重開 Alpha，確認出現 **Task reopened.**，兩張卡各回到 1。用 **Network** 面板核對兩次 PUT 都只提交 `status`，後續 GET 沿用 `title=listdemo`。
+
+> 我負責任務列表、即時搜尋、狀態篩選，以及完成和重開任務。瀏覽器按網址的搜尋條件查詢登入者的任務，用同一份結果更新兩張狀態卡。停止輸入 300 毫秒後才送出搜尋請求，版本號會防止舊回應覆蓋新結果。完成和重開只提交新的狀態，成功後沿用目前的搜尋條件重新載入，讓任務出現在對應的狀態檢視。

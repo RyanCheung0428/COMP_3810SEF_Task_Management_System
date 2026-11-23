@@ -8,14 +8,14 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 
 小組編號 `待填`。
 
-| 組員 | 姓名 | 學號（SID） | 計劃分工 |
+| 組員 | 姓名 | 學號（SID） | 分工及講解文檔 |
 | --- | --- | --- | --- |
 | 1 | 待填 | 待填 | [登入、登出、Session 及權限檢查](./docs/member-01-auth-session.md) |
-| 2 | 待填 | 待填 | [MongoDB、資料模型及帳戶管理](./docs/member-02-mongodb-accounts.md) |
-| 3 | 待填 | 待填 | [任務列表及狀態切換](./docs/member-03-task-list-status.md) |
-| 4 | 待填 | 待填 | [修改、刪除及資料驗證](./docs/member-04-task-edit-delete-validation.md) |
-| 5 | 待填 | 待填 | [REST API、HTTP 狀態碼及 cURL](./docs/member-05-rest-api-curl.md) |
-| 6 | 待填 | 待填 | [EJS、CSS 及 Docker](./docs/member-06-ejs-css-docker.md) |
+| 2 | 待填 | 待填 | [註冊及重設密碼](./docs/member-02-registration-password-reset.md) |
+| 3 | 待填 | 待填 | [任務列表、搜尋、篩選、完成及重開任務](./docs/member-03-task-list-status.md) |
+| 4 | 待填 | 待填 | [新增、編輯、刪除任務、資料驗證及 cURL 示範](./docs/member-04-task-write-curl.md) |
+| 5 | 待填 | 待填 | [全站前端 CSS 及響應式樣式](./docs/member-05-frontend-css.md) |
+| 6 | 待填 | 待填 | [Google Cloud Run 部署](./docs/member-06-cloud-run-deployment.md) |
 
 ## 專案檔案
 
@@ -40,7 +40,7 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 
 ## 網頁操作
 
-啟動 TaskFlow 後，使用預設連接埠時在瀏覽器開啟 `http://localhost:3000`。 [Docker 與 Atlas 啟動指引](./docs/setup.md)
+在本機以 Docker Compose 啟動 TaskFlow 後，如使用預設連接埠，請瀏覽 `http://localhost:3000`。雲端版本完成上線驗收後，可使用 Cloud Run 提供的公開 HTTPS 網址。 [本機啟動指引](./docs/setup.md) · [Cloud Run 部署指引](./docs/member-06-cloud-run-deployment.md)
 
 1. **登入。** 在 `/register` 填寫自選的 **Username** 和 **Password**，按 **Create account** 建立測試帳戶。在 `/login` 輸入同一組帳密，按 **Log in** 進入 **Tasks**。
 2. **新增。** 按 **Add task**，填寫 **Title**，可選填 **Description** 和 **Due date**，再按 **Save task**。
@@ -70,7 +70,7 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 
 ### cURL 示範
 
-先啟動 TaskFlow，並在 `/register` 建立一個測試帳戶。把整段貼到已安裝 `curl` 和 `jq` 的 Bash 終端，按提示輸入帳密。伺服器網址預設為 `http://localhost:3000`。如果主機連接埠是 `8080`，可先執行 `export BASE=http://localhost:8080`。
+先啟動 TaskFlow，並在 `/register` 建立一個測試帳戶。把整段貼到已安裝 `curl` 和 `jq` 的 Bash 終端，按提示輸入帳密。伺服器網址預設為 `http://localhost:3000`。如果使用其他本機連接埠，將 `BASE` 設為對應的本機網址。使用已公開的 Cloud Run 服務時，先執行 `export BASE='https://YOUR-SERVICE-URL.run.app'`，並填入實際的 HTTPS 網址。 [Cloud Run 部署指引](./docs/member-06-cloud-run-deployment.md)
 
 示範會用新增時取得的 `_id` 查詢、修改和刪除同一筆任務。每次請求顯示 HTTP 狀態，結果不符時停止。若在刪除前中斷，可在測試帳戶的任務頁移除當次新增的示範任務。
 

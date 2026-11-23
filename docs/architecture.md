@@ -40,11 +40,13 @@
 | --- | --- |
 | [`package.json`](../package.json) | 宣告專案的 Node.js 版本要求及 Express、Mongoose、EJS 等相依套件。`npm start` 會執行 `server.js`。 |
 | [`package-lock.json`](../package-lock.json) | 記錄直接及間接相依套件的確切版本、下載來源和完整性資料。Docker 建置時用 `npm ci` 按這份清單安裝套件。 |
-| [`Dockerfile`](../Dockerfile) | 定義如何建置應用程式映像檔。它採用 `node:24-bookworm-slim`，用 `npm ci --omit=dev` 安裝套件，複製專案檔案，並以低權限的 `node` 使用者執行 `npm start`。 |
-| [`compose.yaml`](../compose.yaml) | 定義 Docker Compose 的 `app` 服務。它指定映像檔的建置位置，把環境變數傳入容器，並將主機 `127.0.0.1` 的指定連接埠對應到容器內的 `3000`。 |
+| [`Dockerfile`](../Dockerfile) | 定義本機和 Cloud Run 共用的映像檔。它採用 `node:24-bookworm-slim`，用 `npm ci --omit=dev` 安裝套件，複製專案檔案，並以低權限的 `node` 使用者執行 `npm start`。 |
+| [`compose.yaml`](../compose.yaml) | 定義本機 Docker Compose 的 `app` 服務。它指定映像檔的建置位置，把環境變數傳入容器，並將主機 `127.0.0.1` 的指定連接埠對應到容器內的 `3000`。 |
 | [`.env.example`](../.env.example) | 提供環境變數的名稱、註解和預設值。首次設定時，以這份範本建立 `.env`，填妥 Atlas 連線和其他執行設定，供 Docker Compose 載入。 |
 | [`.dockerignore`](../.dockerignore) | 指定 Docker 建置時排除的項目，例如 `.env`、`.env.*`、本機 `node_modules` 和 `.git`。`Dockerfile` 執行 `COPY` 時只會取得建置內容中的檔案。 |
 | [`.gitignore`](../.gitignore) | 定義 Git 對本機設定、套件資料夾及部分本機產生的檔案的忽略規則。`.env.example` 有例外規則，讓環境變數範本可納入版本控制。 |
+
+Cloud Run 透過 Secret Manager 將連線字串和 Session 密鑰傳入容器，Express 以平台指定的連接埠接收請求。 [本機啟動指引](./setup.md) · [Cloud Run 部署指引](./member-06-cloud-run-deployment.md)
 
 ## 請求流程
 

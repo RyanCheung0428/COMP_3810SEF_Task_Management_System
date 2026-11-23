@@ -8,14 +8,14 @@ COMP 3810SEF group project for the Fall 2026 semester. TaskFlow lets users log i
 
 **Group number** `TBD`
 
-| Member | Name | Student ID (SID) | Planned responsibilities |
+| Member | Name | Student ID (SID) | Responsibilities and walkthrough |
 | --- | --- | --- | --- |
 | 1 | TBD | TBD | [Login, logout, sessions, and access control](./docs/member-01-auth-session.md) |
-| 2 | TBD | TBD | [MongoDB, data models, and account management](./docs/member-02-mongodb-accounts.md) |
-| 3 | TBD | TBD | [Task lists and status changes](./docs/member-03-task-list-status.md) |
-| 4 | TBD | TBD | [Editing, deletion, and input validation](./docs/member-04-task-edit-delete-validation.md) |
-| 5 | TBD | TBD | [REST API, HTTP status codes, and cURL](./docs/member-05-rest-api-curl.md) |
-| 6 | TBD | TBD | [EJS, CSS, and Docker](./docs/member-06-ejs-css-docker.md) |
+| 2 | TBD | TBD | [Registration and password reset](./docs/member-02-registration-password-reset.md) |
+| 3 | TBD | TBD | [Task list, search, filters, and completing or reopening tasks](./docs/member-03-task-list-status.md) |
+| 4 | TBD | TBD | [Creating, editing, and deleting tasks, plus validation and the cURL demo](./docs/member-04-task-write-curl.md) |
+| 5 | TBD | TBD | [Site-wide CSS and responsive styling](./docs/member-05-frontend-css.md) |
+| 6 | TBD | TBD | [Google Cloud Run deployment](./docs/member-06-cloud-run-deployment.md) |
 
 ## Project File Overview
 
@@ -40,7 +40,7 @@ For other project files and the internal request flow, see the [project architec
 
 ## Web User Guide
 
-Start TaskFlow and open `http://localhost:3000` if you are using the default port. [Docker and MongoDB Atlas setup](./docs/setup.md)
+For local use, start TaskFlow with Docker Compose and open `http://localhost:3000` if you are using the default port. For the hosted version, use the public HTTPS URL once the release checks are complete. [Local setup](./docs/setup.md) · [Cloud Run deployment](./docs/member-06-cloud-run-deployment.md)
 
 1. **Log in.** At `/register`, choose a **Username** and **Password**, then click **Create account** to create a test account. Enter the same credentials at `/login` and click **Log in** to open **Tasks**.
 2. **Create a task.** Click **Add task**, enter a **Title** and optionally add a **Description** and **Due date**, then click **Save task**.
@@ -70,7 +70,7 @@ For field rules, response formats, and error codes, see the [API reference](./do
 
 ### cURL Demo
 
-Start TaskFlow and create a test account at `/register`. Paste the entire block into a Bash terminal with `curl` and `jq` installed, then enter the test account credentials when prompted. The default server URL is `http://localhost:3000`. If you use port `8080`, run `export BASE=http://localhost:8080` first.
+Start TaskFlow and create a test account at `/register`. Paste the entire block into a Bash terminal with `curl` and `jq` installed, then enter the test account credentials when prompted. The default server URL is `http://localhost:3000`. For a different local port, set `BASE` to that local URL. For a public Cloud Run deployment, run `export BASE='https://YOUR-SERVICE-URL.run.app'` with the actual HTTPS URL first. [Cloud Run deployment](./docs/member-06-cloud-run-deployment.md)
 
 The demo uses the `_id` returned by the create request to read, update, and delete the same task. It displays the HTTP status for each request and stops if a check fails. If the demo stops before deletion, you can remove the task from the test account's **Tasks** page.
 

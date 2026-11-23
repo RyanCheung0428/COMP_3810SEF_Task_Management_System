@@ -1,18 +1,19 @@
-# 組員 4｜修改、刪除及資料驗證
+# 組員 4｜新增、編輯及刪除任務
 
 ## 負責範圍
 
-說明新增和編輯如何共用表單、瀏覽器與伺服器各自驗證甚麼，以及修改和刪除如何限定為登入者名下的任務。
+負責新增和編輯任務的共用表單、欄位驗證、單筆任務預載，以及刪除確認和 API，並整理 cURL 整合示範。組員 4 維護共用的 `PUT /api/tasks/:id`。編輯表單提交任務內容，組員 3 的狀態按鈕也使用此端點提交 `status`。 [組員 3 的狀態切換流程](./member-03-task-list-status.md) · [cURL 示範](../README.zh-Hant.md#curl-示範)
 
 ## 程式碼地圖
 
 | 檔案 | 接收、處理及輸出 |
 | --- | --- |
 | [`routes/tasks.js`](../routes/tasks.js#L9) | 從頁面網址取得 `title` 和 `view`，設定返回列表的條件。新增和編輯路由把標題及任務 ID 傳給同一份 EJS 模板。 |
-| [`views/task-form.ejs`](../views/task-form.ejs#L4) · [`views/tasks.ejs`](../views/tasks.ejs#L34) | 表單提供輸入欄、錯誤位置、取消連結和 `data-*` 資料。列表的任務列模板提供 **Edit** 和 **Delete** 選項。 |
-| [`public/forms.js`](../public/forms.js#L284) | `initializeTaskForm` 決定是否預載資料及使用 POST 或 PUT。`handleForm` 管理送出狀態，`showFieldErrors` 負責顯示欄位錯誤。列表的點擊處理器負責刪除。 [共用表單處理](../public/forms.js#L65) · [刪除事件](../public/forms.js#L245) |
+| [`views/task-form.ejs`](../views/task-form.ejs#L4) · [`views/tasks.ejs`](../views/tasks.ejs#L34) | 表單提供輸入欄、錯誤位置、取消連結和 `data-*` 資料。列表的任務列模板提供 **Edit** 和 **Delete**。 |
+| [`public/forms.js`](../public/forms.js#L284) | `initializeTaskForm` 決定是否預載資料及使用 POST 或 PUT。`handleForm` 管理送出狀態，`showFieldErrors` 負責顯示欄位錯誤。 [共用表單處理](../public/forms.js#L65) |
+| [列表操作處理](../public/forms.js#L244) | 處理刪除確認、提交 DELETE 並重查列表。 |
 | [`server.js`](../server.js#L79) · [`routes/auth.js`](../routes/auth.js#L51) | 先檢查登入狀態及寫入請求的 CSRF 驗證碼，再解析 JSON 和交給 API 路由。 |
-| [`routes/api.js`](../routes/api.js#L10) | 檢查任務 ID 格式，呼叫共用驗證函式，並依請求種類讀取、建立、修改或刪除資料。 |
+| [`routes/api.js`](../routes/api.js#L10) | 檢查任務 ID 格式，依請求種類讀取單筆、建立、更新或刪除資料。新增和更新使用共用欄位驗證。 |
 | [`task-input.js`](../task-input.js#L14) · [`models/Task.js`](../models/Task.js#L6) | 前者回傳整理後的欄位和錯誤，後者定義 MongoDB 欄位、擁有者、預設值和模型驗證。 |
 
 ## 操作及請求流程
@@ -25,15 +26,14 @@ flowchart LR
     Read --> Save["Save task"]
     Frontend -->|空 ID| Save
     Save --> Validate["POST 或 PUT<br/>validateTask"]
-    Validate -->|通過| DB["Task 模型<br/>建立、更新或刪除"]
+    Validate -->|通過| DB["Task 模型<br/>建立或更新"]
     Validate -->|有錯誤| Error["400，顯示欄位錯誤"]
-    Delete["列表 Delete<br/>使用者確認"] -->|確認後 DELETE| DB
 ```
 
 ### 開啟共用表單
 
 1. 從列表按 **Add task** 會開啟 `/tasks/new`，路由用空的 `taskId` 渲染 `task-form.ejs`。在 **⋯** 選單按 **Edit** 會開啟 `/tasks/:id/edit`，路由先驗證 ObjectId 格式，再把 ID 傳入同一個模板。兩個頁面都先通過頁面登入檢查。 [頁面登入](../server.js#L65) · [新增與編輯路由](../routes/tasks.js#L35)
-2. 模板以 `data-task-id`、`data-view` 和 `data-search-title` 把 ID、分頁和搜尋文字傳給瀏覽器。**Cancel** 用路由的 `returnUrl` 返回同一個篩選結果。初始的 `fieldset` 為停用狀態，等 `initializeTaskForm` 準備好欄位才啟用。 [返回條件](../routes/tasks.js#L14) · [表單模板](../views/task-form.ejs#L4)
+2. 模板以 `data-task-id`、`data-view` 和 `data-search-title` 把 ID、狀態檢視和搜尋文字傳給瀏覽器。**Cancel** 用路由的 `returnUrl` 返回同一個篩選結果。初始的 `fieldset` 為停用狀態，等 `initializeTaskForm` 準備好欄位才啟用。 [返回條件](../routes/tasks.js#L14) · [表單模板](../views/task-form.ejs#L4)
 3. 新增頁的 ID 為空，程式直接啟用空表單。編輯頁有 ID，程式先發出 `GET /api/tasks/:id`。API 檢查 ID 格式後，用 `_id` 和登入者的 `userId` 查詢。收到 `200` 和任務資料後，程式填入標題、描述及 ISO 日期首十個字元，才啟用表單。只有找到登入者名下的任務才會完成預載。 [表單初始化](../public/forms.js#L284) · [ID 格式檢查](../routes/api.js#L10) · [單筆讀取](../routes/api.js#L29)
 
 ### 提交、驗證和寫入
@@ -116,28 +116,37 @@ if (!updatedTask) return res.status(404).json({ error: 'Task not found.' });
 
 ### 確認及刪除
 
-1. 在列表選 **⋯ → Delete**，`initializeTaskList` 根據 `data-task-action` 找到該任務。取消確認對話框時，處理器直接返回。確認後暫停列表的更新動作和被點擊按鈕，再帶上 Session Cookie 和 CSRF 驗證碼發出 `DELETE /api/tasks/:id`。 [確認及請求](../public/forms.js#L245)
-2. 刪除路由以 `_id` 和 `userId` 執行 `deleteOne`。`deletedCount === 0` 回傳 `404`。成功時回傳 `200` 和 `Task deleted.`，瀏覽器顯示該提示，按原有篩選條件重查列表，最後恢復按鈕。 [刪除 API](../routes/api.js#L65) · [提示、重查與解除鎖定](../public/forms.js#L261)
+1. 在任務列表選 **⋯ → Delete**，瀏覽器會顯示 **Delete this task?**。按 **Cancel** 便保留任務，點擊處理器會在停用按鈕和發送請求前返回。 [確認分支](../public/forms.js#L245)
+2. 確認後，程式停用被點擊的按鈕並暫時阻止其他列表寫入。瀏覽器向 `DELETE /api/tasks/:id` 送出 Session Cookie 和 `X-CSRF-Token`，使用網址內的 ID 指定任務。 [刪除請求](../public/forms.js#L252) · [共用請求函式](../public/forms.js#L41)
+3. API 檢查 ID 格式，再用任務的 `_id` 和登入者的 `userId` 執行 `deleteOne`。找不到符合條件的任務時回傳 `404`，成功時回傳 `200` 及 `{"message":"Task deleted."}`。網頁顯示提示，按目前搜尋條件重查列表，並在操作結束時恢復按鈕。 [ID 檢查](../routes/api.js#L10) · [刪除路由](../routes/api.js#L65) · [重查列表](../public/forms.js#L261)
 
-確認對話框放在設定 `updating` 和停用按鈕之前。按 **Cancel** 時提早返回，原列表及按鈕可繼續使用。按確認後才以任務列的 `dataset.taskId` 組合 DELETE 網址。這次請求沒有 JSON 內容，但仍須帶上 Session Cookie 和 CSRF 驗證碼。 [確認分支](../public/forms.js#L245) · [寫入請求標頭](../public/forms.js#L41)
+## 用 cURL 示範新增、查詢、更新及刪除
 
-```js
-const deleting = button.dataset.taskAction === 'delete';
-if (deleting && !window.confirm('Delete this task?')) return;
+用自行註冊的測試帳戶執行 README 的 Bash 區塊。本機預設使用 `http://localhost:3000`。使用已上線的 Cloud Run 服務時，把 `BASE` 設為該服務的 HTTPS 網址。 [cURL 指令](../README.zh-Hant.md#curl-示範) · [Cloud Run 部署指引](./member-06-cloud-run-deployment.md)
 
-updating = true;
-button.disabled = true;
-```
+cURL 先呼叫 `GET /api/auth/csrf` 取得訪客 Cookie 和 CSRF 驗證碼，再送出登入資料。登入成功後保存新 Cookie，並再取一次 CSRF 驗證碼。之後的任務請求使用新 Cookie，寫入和登出請求另帶登入後取得的驗證碼。 [取得驗證碼](../routes/auth.js#L76) · [組員 1 的登入流程](./member-01-auth-session.md)
+
+| 請求 | 示範核對項目 |
+| --- | --- |
+| `POST /api/tasks` | 回傳 `201` 及任務資料，儲存新任務的 `_id`，確認預設狀態為 `In Progress`。 |
+| `GET /api/tasks` 及 `GET /api/tasks/:id` | 兩個請求均回傳 `200`，在列表和單筆回應找到相同 ID。 |
+| `PUT /api/tasks/:id` | 回傳 `200`，核對新標題及狀態，確認原有描述保留。 |
+| `DELETE /api/tasks/:id` 後再次查單筆 | 刪除回傳 `200` 及確認訊息，查詢同一 ID 時回傳 `404`。 |
+| `POST /api/auth/logout` | 回傳 `204`，伺服器銷毀 Session 並清除 Cookie。 |
+
+`api_call()` 讀寫 Cookie 檔案並逐步核對 HTTP 狀態。示範以 `jq -e` 核對回應內的 ID 和欄位值。它只刪除當次建立的任務，結束時會移除暫存檔案。 [Bash 示範](../README.zh-Hant.md#curl-示範)
 
 ## 失敗時會發生甚麼
 
 | 情況 | 畫面或 API 反應 |
 | --- | --- |
 | ID 格式有誤 | 編輯頁渲染 `400` 錯誤頁。單筆 API 的 ID 驗證回傳 `400` JSON。兩者都先於任務資料庫查詢。 [頁面檢查](../routes/tasks.js#L39) · [API 檢查](../routes/api.js#L10) |
-| 有效 ID 在這個帳戶中查無任務 | 通過先前的請求檢查後，GET、PUT 或 DELETE 回傳 `404`。編輯頁預載遇到這個錯誤時，頁首顯示錯誤而表單維持停用。 [單筆讀取](../routes/api.js#L29) · [更新及刪除](../routes/api.js#L59) · [初始化錯誤處理](../public/forms.js#L343) |
+| 有效 ID 在這個帳戶中查無任務 | 單筆查詢、更新和刪除都回傳 `404`。若編輯預載失敗，表單維持停用。若刪除失敗，列表顯示錯誤並恢復按鈕。 [單筆讀取](../routes/api.js#L29) · [任務更新](../routes/api.js#L59) · [刪除路由](../routes/api.js#L65) · [列表錯誤處理](../public/forms.js#L265) |
 | 欄位或整份表單無效 | `request` 將 JSON 的 `fields` 放進錯誤物件。頁首提示優先顯示 `fields._form`，其次顯示一般錯誤訊息。`showFieldErrors` 依欄位名稱找訊息，透過 `aria-describedby` 定位訊息元素，並設定或移除 `aria-invalid`。畫面留在原表單，使用者可修正再試。 [解析 API 錯誤](../public/forms.js#L56) · [欄位標記](../public/forms.js#L275) · [錯誤顯示](../public/forms.js#L302) |
 | Session 失效、CSRF 驗證或 JSON 解析失敗 | 分別回傳 `401`、`403` 或適用的 `4xx`，例如 JSON 格式有誤時回傳 `400`，超出大小上限時回傳 `413`。前端收到 `401` 轉到登入頁，收到 `403` 時清除快取的 CSRF 驗證碼，供下次寫入時重新取得。 [表單請求](../public/forms.js#L41) · [登入與 CSRF 檢查](../routes/auth.js#L51) · [解析錯誤](../server.js#L81) |
-| 寫入發生其他伺服器錯誤 | API 例外會交給 Express 的錯誤處理器，回傳通用 `500` JSON。前端在頁首顯示錯誤，解除表單或列表按鈕的忙碌狀態。 [伺服器錯誤處理](../server.js#L85) · [表單解除鎖定](../public/forms.js#L75) · [列表解除鎖定](../public/forms.js#L265) |
+| 寫入發生其他伺服器錯誤 | API 例外會交給 Express 的錯誤處理器，回傳通用 `500` JSON。前端在頁首顯示錯誤，解除表單按鈕的忙碌狀態。 [伺服器錯誤處理](../server.js#L85) · [表單解除鎖定](../public/forms.js#L75) |
+| 刪除成功後列表查詢失敗 | 畫面可能同時顯示刪除成功及重查錯誤。重新整理後，以最新列表核對刪除結果。 [成功提示與重查](../public/forms.js#L261) · [重查錯誤處理](../public/forms.js#L201) |
+| cURL 未取得 HTTP 回應，或在狀態符合預期後中止 | 連線錯誤時先核對 `BASE` 和服務日誌。HTTP 狀態已符合預期時，檢查 `jq -e` 核對的欄位值。 [cURL 示範](../README.zh-Hant.md#curl-示範) |
 
 ### 從錯誤回應追到欄位
 
@@ -155,12 +164,16 @@ button.disabled = true;
 
 - **為甚麼看不到 POST 或 PUT？** 確認編輯預載的 GET 是否成功，並查看 `fieldset` 是否已啟用。再看瀏覽器有沒有因 `required` 擋下送出，以及是否在等候 `GET /api/auth/csrf`。 [預載及啟用](../public/forms.js#L284) · [HTML 驗證](../views/task-form.ejs#L7) · [取得 CSRF 驗證碼](../public/forms.js#L27)
 - **同樣是 400，怎樣分辨哪一關出錯？** 伺服器先查登入和 CSRF，再解析 JSON。其後 `router.param` 驗證 ID，PUT 最後用 `validateTask` 檢查欄位。JSON 解析失敗的通用訊息是 **Invalid request data.**，ID 格式錯誤是 **Invalid task ID.**，欄位錯誤則附上 `fields`。 [中介層及解析器](../server.js#L81) · [ID 驗證](../routes/api.js#L10) · [欄位驗證](../routes/api.js#L48)
-- **有成功提示，但在列表找不到剛編輯的任務？** 回到列表後仍會用原有 `title` 重新搜尋。若改名後標題與該關鍵字不符，畫面便省略該任務。可清除搜尋，再查看它所屬的狀態分頁。 [保留網址條件](../public/forms.js#L297) · [列表的標題查詢及分組](../public/forms.js#L143)
+- **有成功提示，但在列表找不到剛編輯的任務？** 回到列表後仍會用原有 `title` 重新搜尋。若改名後標題與該關鍵字不符，畫面便省略該任務。可清除搜尋，再查看它所屬的狀態檢視。 [保留網址條件](../public/forms.js#L297) · [組員 3 的列表查詢](./member-03-task-list-status.md)
 
 ## 示範與口頭講解
 
-1. 用自己的測試帳戶新增 `EditDemo Original`，填寫描述和日期。在列表搜尋 `EditDemo` 後開啟 **Edit**，確認三個欄位已預填。按 **Cancel** 可返回同一搜尋結果。
-2. 再次開啟 **Edit**，把標題改成只有空格後儲存。在瀏覽器的 **Network** 面板確認回傳 `400`，標題旁顯示 **Enter a title of 1 to 120 characters.**。再輸入 `EditDemo Updated`、清空日期及儲存。確認 **Task updated.** 出現，返回的列表仍保留搜尋。在 **Network** 面板對照送出的欄位與回應，回應的 `dueDate` 為 `null`，任務的 `status` 保留原值。
-3. 選 **Delete** 後先取消，確認任務仍在。再選 **Delete** 並確認，畫面顯示 **Task deleted.**，重新載入的列表移除該筆資料。 [cURL 示範的驗證步驟](../README.zh-Hant.md#curl-示範)
+在本機啟動 TaskFlow，註冊測試帳戶並登入。 [本機啟動指引](./setup.md)
 
-> 講解時從 `data-task-id` 開始，比較新增及編輯的預載和提交路徑。用只有空格的標題展示伺服器如何回傳 `fields.title`，再指出 `showFieldErrors` 如何把訊息放到正確欄位。最後沿着 PUT 的 `$set` 和 DELETE 的 `deleteOne` 解釋兩者如何用任務 ID 和登入者 ID 核對擁有者。
+1. 新增 `EditDemo Original`，填寫描述和日期。成功後確認 **Task added.**，在 **Network** 面板指出 `POST /api/tasks` 回傳的 `201` 和任務 ID。
+2. 在列表搜尋 `EditDemo` 後開啟 **Edit**。確認三個欄位已預填，按 **Cancel** 返回同一搜尋結果。
+3. 再次開啟 **Edit**，把標題改成只有空格後儲存。確認 PUT 回傳 `400`，標題旁顯示 **Enter a title of 1 to 120 characters.**。輸入 `EditDemo Updated`、清空日期及儲存，確認 **Task updated.** 出現且搜尋條件保留。在 **Network** 面板比較請求和回應，留意回應的 `dueDate` 為 `null`，`status` 仍為原值。
+4. 對同一筆測試任務選 **Delete** 後先取消，確認任務及數量維持原樣，**Network** 面板也沒有 DELETE 請求。再選 **Delete** 並確認，核對 `200`、**Task deleted.** 和重查後的列表。
+5. 執行 README 的 cURL 示範。在輸出中指出同一筆任務的 ID、更新後保留的描述、刪除後再次查詢的 `404` 和登出的 `204`。 [cURL 示範](../README.zh-Hant.md#curl-示範)
+
+> 我負責新增、編輯和刪除任務。新增和編輯共用表單。新增用 POST，編輯先讀取原有資料，再以 PUT 提交變更。伺服器驗證欄位，並在更新或刪除時同時比對任務 ID 和登入者 ID。刪除前，瀏覽器會要求確認。我亦可以用 cURL 追蹤同一筆任務，驗證局部更新保留原有描述，以及刪除後再查會回傳 404。
