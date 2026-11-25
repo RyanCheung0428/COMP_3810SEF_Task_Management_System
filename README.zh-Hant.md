@@ -51,11 +51,10 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 
 ## REST API
 
-任務 API 需要登入後的 Session Cookie。任務寫入也需要 `X-CSRF-Token`。
+先以 JSON 登入，保存伺服器發出的 Session Cookie。讀取及修改任務時帶上這個 Cookie。`POST` 和 `PUT` 使用 `Content-Type: application/json`，登出時送出 `{}`。
 
 | HTTP 方法 | URI | 用途 |
 | --- | --- | --- |
-| `GET` | `/api/auth/csrf` | 取得目前 Session 的 CSRF 驗證碼 |
 | `POST` | `/api/auth/register` | 註冊帳戶 |
 | `POST` | `/api/auth/login` | 登入並建立 Session |
 | `POST` | `/api/auth/reset-password` | 重設密碼 |
@@ -70,9 +69,11 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 
 ### cURL 示範
 
-先啟動 TaskFlow，並在 `/register` 建立一個測試帳戶。把整段貼到已安裝 `curl` 和 `jq` 的 Bash 終端，按提示輸入帳密。伺服器網址預設為 `http://localhost:3000`。如果使用其他本機連接埠，將 `BASE` 設為對應的本機網址。使用已公開的 Cloud Run 服務時，先執行 `export BASE='https://YOUR-SERVICE-URL.run.app'`，並填入實際的 HTTPS 網址。 [Cloud Run 部署指引](./docs/member-06-cloud-run-deployment.md)
+先啟動 TaskFlow，並在 `/register` 建立示範帳戶。在有 `curl` 和 `jq` 的 Bash 中操作。本機預設為 `http://localhost:3000`。
 
-示範會用新增時取得的 `_id` 查詢、修改和刪除同一筆任務。每次請求顯示 HTTP 狀態，結果不符時停止。若在刪除前中斷，可在測試帳戶的任務頁移除當次新增的示範任務。
+**課堂逐句示範。** 在專案根目錄執行 `source ./docs/TaskFlow-curl-demo.txt` 並登入。如使用雲端，在這條指令末尾加上實際 HTTPS 網址。看到 `Signed in.` 後，在同一個終端機逐句貼上檔案開頭的四條 `curl`，每次按 Enter 會顯示一行 JSON。 [四條示範指令](./docs/TaskFlow-curl-demo.txt) · [組員 4 示範步驟](./docs/member-04-task-write-curl.md)
+
+**完整驗收。** 在 Bash 貼上以下程式。若使用其他連接埠或雲端，先把 `BASE` 設為該服務的完整網址。示範會用新增時取得的 `_id` 查詢、修改和刪除同一筆任務。每次請求顯示 HTTP 狀態，結果不符時停止。若在刪除前中斷，可在測試帳戶的任務頁移除當次新增的示範任務。
 
 ```bash
 (
@@ -88,6 +89,7 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
   COOKIE_JAR="$DEMO_DIR/cookies.txt"
   BODY="$DEMO_DIR/response.json"
   trap 'rm -f -- "$COOKIE_JAR" "$BODY"; rmdir -- "$DEMO_DIR"' EXIT
+  touch "$COOKIE_JAR"
 
   api_call() {
     local expected=$1 method=$2 path=$3 status
@@ -102,24 +104,18 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
     fi
   }
 
-  # 先取得訪客 CSRF 驗證碼。登入成功後，Cookie jar 會保存新 Session 的 Cookie。
-  api_call 200 GET /api/auth/csrf
-  CSRF=$(jq -er '.csrfToken | select(type == "string" and test("^[0-9a-f]{64}$"))' "$BODY")
+  # 直接以 JSON 登入，將回傳的 Session Cookie 存入 Cookie jar。
   printf '%s\n' "$USERNAME" "$PASSWORD" \
     | jq -Rnc '{username: input, password: input}' \
     | api_call 200 POST /api/auth/login \
-        -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" --data-binary @-
+        -H 'Content-Type: application/json' --data-binary @-
   unset PASSWORD
-
-  # 登入會更換 CSRF 驗證碼。之後的寫入請求使用新驗證碼。
-  api_call 200 GET /api/auth/csrf
-  CSRF=$(jq -er '.csrfToken | select(type == "string" and test("^[0-9a-f]{64}$"))' "$BODY")
 
   # Create：新增任務並保存回應內的 ID，確認預設狀態為 In Progress。
   api_call 201 POST /api/tasks \
-    -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" \
+    -H 'Content-Type: application/json' \
     --data '{"title":"cURL CRUD demo","description":"Keep this description"}'
-  TASK_ID=$(jq -er '._id | select(type == "string" and test("^[0-9a-fA-F]{24}$"))' "$BODY")
+  TASK_ID=$(jq -ej '._id | select(type == "string" and test("^[0-9a-fA-F]{24}$"))' "$BODY")
   jq -e 'select(.status == "In Progress")' "$BODY"
 
   # Read：從列表回應取出示範任務，再用 ID 查詢單筆任務。
@@ -130,18 +126,18 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 
   # Update：只提交標題和狀態，檢查未提交的描述仍然保留。
   api_call 200 PUT "/api/tasks/$TASK_ID" \
-    -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" \
+    -H 'Content-Type: application/json' \
     --data '{"title":"cURL CRUD demo updated","status":"Completed"}'
   jq -e --arg id "$TASK_ID" 'select(._id == $id and .title == "cURL CRUD demo updated"
     and .status == "Completed" and .description == "Keep this description")' "$BODY"
 
   # Delete：刪除本次新增的任務，再確認同一個 ID 已查不到。
-  api_call 200 DELETE "/api/tasks/$TASK_ID" -H "X-CSRF-Token: $CSRF"
+  api_call 200 DELETE "/api/tasks/$TASK_ID"
   jq -e 'select(.message == "Task deleted.")' "$BODY"
   api_call 404 GET "/api/tasks/$TASK_ID"
   jq . "$BODY"
 
-  api_call 204 POST /api/auth/logout -H "X-CSRF-Token: $CSRF"
+  api_call 204 POST /api/auth/logout -H 'Content-Type: application/json' --data '{}'
 )
 ```
 

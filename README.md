@@ -51,11 +51,10 @@ For local use, start TaskFlow with Docker Compose and open `http://localhost:300
 
 ## REST API
 
-The task API requires an authenticated session cookie. Requests that create, update, or delete tasks also require an `X-CSRF-Token` header.
+Log in with JSON and save the session cookie. Send that cookie with every task request. Use `Content-Type: application/json` for `POST` and `PUT`, including an empty JSON object (`{}`) for logout.
 
 | HTTP method | URI | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/auth/csrf` | Get the CSRF token for the current session |
 | `POST` | `/api/auth/register` | Register an account |
 | `POST` | `/api/auth/login` | Log in and establish a session |
 | `POST` | `/api/auth/reset-password` | Reset a password |
@@ -70,9 +69,11 @@ For field rules, response formats, and error codes, see the [API reference](./do
 
 ### cURL Demo
 
-Start TaskFlow and create a test account at `/register`. Paste the entire block into a Bash terminal with `curl` and `jq` installed, then enter the test account credentials when prompted. The default server URL is `http://localhost:3000`. For a different local port, set `BASE` to that local URL. For a public Cloud Run deployment, run `export BASE='https://YOUR-SERVICE-URL.run.app'` with the actual HTTPS URL first. [Cloud Run deployment](./docs/member-06-cloud-run-deployment.md)
+Start TaskFlow and create a demo account at `/register`. Use Bash with `curl` and `jq`. The default local URL is `http://localhost:3000`.
 
-The demo uses the `_id` returned by the create request to read, update, and delete the same task. It displays the HTTP status for each request and stops if a check fails. If the demo stops before deletion, you can remove the task from the test account's **Tasks** page.
+**Live demo.** From the project root, run `source ./docs/TaskFlow-curl-demo.txt` and sign in. For a cloud demo, append your service’s HTTPS URL to that command. After `Signed in.`, paste the four `curl` commands at the top of the file, one at a time in the same terminal. Each prints one line of JSON. [Four demo commands](./docs/TaskFlow-curl-demo.txt) · [Member 4 walkthrough](./docs/member-04-task-write-curl.md)
+
+**Full check.** Paste the block below into Bash. For another port or a cloud deployment, set `BASE` to the service URL first. The demo uses the `_id` returned by the create request to read, update, and delete the same task. It displays the HTTP status for each request and stops if a check fails. If the demo stops before deletion, you can remove the task from the test account's **Tasks** page.
 
 ```bash
 (
@@ -88,6 +89,7 @@ The demo uses the `_id` returned by the create request to read, update, and dele
   COOKIE_JAR="$DEMO_DIR/cookies.txt"
   BODY="$DEMO_DIR/response.json"
   trap 'rm -f -- "$COOKIE_JAR" "$BODY"; rmdir -- "$DEMO_DIR"' EXIT
+  touch "$COOKIE_JAR"
 
   api_call() {
     local expected=$1 method=$2 path=$3 status
@@ -102,24 +104,18 @@ The demo uses the `_id` returned by the create request to read, update, and dele
     fi
   }
 
-  # Get a guest CSRF token. The cookie jar stores the new session cookie after login.
-  api_call 200 GET /api/auth/csrf
-  CSRF=$(jq -er '.csrfToken | select(type == "string" and test("^[0-9a-f]{64}$"))' "$BODY")
+  # Log in directly. Save the session cookie for the task requests.
   printf '%s\n' "$USERNAME" "$PASSWORD" \
     | jq -Rnc '{username: input, password: input}' \
     | api_call 200 POST /api/auth/login \
-        -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" --data-binary @-
+        -H 'Content-Type: application/json' --data-binary @-
   unset PASSWORD
-
-  # Login rotates the CSRF token. Use the new token for write requests.
-  api_call 200 GET /api/auth/csrf
-  CSRF=$(jq -er '.csrfToken | select(type == "string" and test("^[0-9a-f]{64}$"))' "$BODY")
 
   # Create the task, save its ID, and verify the default status is In Progress.
   api_call 201 POST /api/tasks \
-    -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" \
+    -H 'Content-Type: application/json' \
     --data '{"title":"cURL CRUD demo","description":"Keep this description"}'
-  TASK_ID=$(jq -er '._id | select(type == "string" and test("^[0-9a-fA-F]{24}$"))' "$BODY")
+  TASK_ID=$(jq -ej '._id | select(type == "string" and test("^[0-9a-fA-F]{24}$"))' "$BODY")
   jq -e 'select(.status == "In Progress")' "$BODY"
 
   # Find the demo task in the list, then fetch it by ID.
@@ -130,18 +126,18 @@ The demo uses the `_id` returned by the create request to read, update, and dele
 
   # Update the title and status, and verify that the description is preserved.
   api_call 200 PUT "/api/tasks/$TASK_ID" \
-    -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" \
+    -H 'Content-Type: application/json' \
     --data '{"title":"cURL CRUD demo updated","status":"Completed"}'
   jq -e --arg id "$TASK_ID" 'select(._id == $id and .title == "cURL CRUD demo updated"
     and .status == "Completed" and .description == "Keep this description")' "$BODY"
 
   # Delete the demo task and verify that its ID can no longer be found.
-  api_call 200 DELETE "/api/tasks/$TASK_ID" -H "X-CSRF-Token: $CSRF"
+  api_call 200 DELETE "/api/tasks/$TASK_ID"
   jq -e 'select(.message == "Task deleted.")' "$BODY"
   api_call 404 GET "/api/tasks/$TASK_ID"
   jq . "$BODY"
 
-  api_call 204 POST /api/auth/logout -H "X-CSRF-Token: $CSRF"
+  api_call 204 POST /api/auth/logout -H 'Content-Type: application/json' --data '{}'
 )
 ```
 

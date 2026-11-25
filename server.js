@@ -78,7 +78,7 @@ async function start() {
   app.get('/dashboard', requirePageLogin, (req, res) => res.redirect('/tasks'));
   app.use('/tasks', requirePageLogin, taskRoutes);
   app.use('/api/auth', auth.router);
-  app.use('/api/tasks', auth.requireLogin, auth.requireCsrf, express.json({ limit: '16kb' }), apiRoutes);
+  app.use('/api/tasks', auth.requireLogin, auth.checkApiWrite, express.json({ limit: '16kb' }), apiRoutes);
 
   // These handlers run after the routes for unmatched URLs and failed requests.
   app.use((req, res) => showError(req, res, 404, 'Page not found.'));

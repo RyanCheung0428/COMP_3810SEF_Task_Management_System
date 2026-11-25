@@ -22,31 +22,12 @@ function signOut() {
   window.location.replace('/login');
 }
 
-let csrfRequest;
-
-async function getCsrfToken() {
-  csrfRequest ??= fetch('/api/auth/csrf', { credentials: 'same-origin' })
-    .then(async (response) => {
-      if (!response.ok) throw new Error('Could not prepare the form. Please try again.');
-      const { csrfToken } = await response.json();
-      return csrfToken;
-    })
-    .catch((error) => {
-      csrfRequest = undefined;
-      throw error;
-    });
-  return csrfRequest;
-}
-
 async function request(url, { method = 'GET', body, authenticated = true } = {}) {
-  const headers = {};
-  if (method !== 'GET') headers['X-CSRF-Token'] = await getCsrfToken();
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const headers = body === undefined ? {} : { 'Content-Type': 'application/json' };
 
   const response = await fetch(url, {
     method, headers, credentials: 'same-origin', body: JSON.stringify(body)
   });
-  if (response.status === 403) csrfRequest = undefined;
   if (authenticated && response.status === 401) {
     signOut();
     return;
@@ -315,7 +296,7 @@ async function initialize() {
   document.querySelector('#account-nav').hidden = false;
   document.querySelector('.brand').href = '/tasks';
   handleForm(logoutForm, async () => {
-    if (await request(logoutForm.action, { method: 'POST' })) signOut();
+    if (await request(logoutForm.action, { method: 'POST', body: {} })) signOut();
   }, (error) => showMessage(requestError, error.message));
 
   if (taskPage) await initializeTaskList(taskPage);

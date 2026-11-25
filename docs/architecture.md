@@ -7,7 +7,7 @@
 | 檔案 | 用途 |
 | --- | --- |
 | [`server.js`](../server.js) | 啟動 Express、連接 MongoDB，並設定 EJS、靜態資源、MongoDB Session store、Passport 和路由。 |
-| [`routes/auth.js`](../routes/auth.js) | 使用 Passport 驗證帳號密碼及恢復登入狀態，並提供註冊、重設密碼、登出及 CSRF 驗證碼端點。 |
+| [`routes/auth.js`](../routes/auth.js) | 使用 Passport 驗證帳號密碼及恢復登入狀態，並提供註冊、重設密碼和登出端點，並檢查 API 寫入請求。 |
 | [`routes/tasks.js`](../routes/tasks.js) | 為任務列表、新增及編輯網址渲染 EJS 頁面。瀏覽器透過 REST API 取得私人任務。 |
 | [`routes/api.js`](../routes/api.js) | 處理任務的查詢、新增、修改和刪除，依 Passport 驗證後的使用者 ID 限制操作範圍。 |
 
@@ -31,7 +31,7 @@
 | [`views/error.ejs`](../views/error.ejs) | 顯示錯誤狀態碼、訊息和返回系統的連結。 |
 | [`views/header.ejs`](../views/header.ejs) | 各頁共用的頁首模板，設定網頁標題、載入 `styles.css` 和 `forms.js`，並開啟主要內容區。登入後會顯示任務列表連結和登出表單。 |
 | [`views/footer.ejs`](../views/footer.ejs) | 各頁在內容末端引入此模板，結束頁首模板開啟的 `<main>`、`<body>` 和 `<html>` 標籤。 |
-| [`public/forms.js`](../public/forms.js) | 透過同源 Session Cookie 和 CSRF 驗證碼提交 JSON 表單，載入及顯示任務、分類計數和欄位錯誤。以香港時間判斷任務是否逾期。 |
+| [`public/forms.js`](../public/forms.js) | 提交 JSON 表單，登入後帶上同源 Session Cookie，載入及顯示任務、分類計數和欄位錯誤。以香港時間判斷任務是否逾期。 |
 | [`public/styles.css`](../public/styles.css) | 由共用頁首載入的樣式表，控制表單、按鈕、任務列表和錯誤訊息的外觀。它設定鍵盤焦點樣式，並按螢幕寬度調整間距。 |
 
 ### 專案設定與部署
@@ -50,9 +50,9 @@ Cloud Run 透過 Secret Manager 將連線字串和 Session 密鑰傳入容器，
 
 ## 請求流程
 
-1. 登入頁從 `GET /api/auth/csrf` 取得驗證碼，並以 JSON 將帳號密碼送到 `POST /api/auth/login`。Passport Local strategy 以 bcrypt 核對現有密碼雜湊。
+1. 登入頁以 JSON 將帳密直接送到 `POST /api/auth/login`。伺服器檢查請求來源資訊和內容類型，Passport Local strategy 以 bcrypt 核對密碼。
 2. 登入成功後，Passport 建立新的 Session，將使用者 ID 及登入版本存到 MongoDB。瀏覽器收到有效期兩小時的 `HttpOnly`、`SameSite=Lax` Cookie，並在同源請求中帶上它。
-3. Passport 核對 Session 和帳戶的登入版本後，恢復帳戶身分。任務路由按使用者 ID 存取資料。寫入請求透過 `X-CSRF-Token` 提交目前 Session 的驗證碼。登出會銷毀 Session 並清除 Cookie。
+3. Passport 核對 Session 和登入版本後，任務路由按登入者 ID 存取資料。`POST`、`PUT` 使用 JSON，`DELETE` 以路徑指定任務。登出時前端送出 JSON `{}`，伺服器銷毀 Session 並清除 Cookie。
 4. 重設密碼時，伺服器同時更新帳戶的 bcrypt 密碼雜湊及登入版本。該帳戶先前的 Session 隨即失效。
 
 ## 舊版登入資料相容性
