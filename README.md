@@ -88,19 +88,19 @@ Run these four commands one at a time in the same directory. Each uses `-b cooki
 **1. Create a task (POST).** Copy the `_id` from the response. The new task has the status `In Progress`.
 
 ```bash
-curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' http://localhost:3000/api/tasks
+curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' http://localhost:3000/api/tasks| jq
 ```
 
 **2. Read the task list (GET).** Find `Demo task` with the same `_id` in the returned array.
 
 ```bash
-curl -sS -w '\n' -X GET -b cookies.txt http://localhost:3000/api/tasks
+curl -sS -w '\n' -X GET -b cookies.txt http://localhost:3000/api/tasks | jq
 ```
 
 **3. Update the task (PUT).** Replace `TASK_ID` in the URL with the `_id` from step 1. The response shows `Completed`.
 
 ```bash
-curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' http://localhost:3000/api/tasks/TASK_ID
+curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' http://localhost:3000/api/tasks/TASK_ID| jq
 ```
 
 **4. Delete the task (DELETE).** Replace `TASK_ID` with that same `_id`. The response is `{"message":"Task deleted."}`.
