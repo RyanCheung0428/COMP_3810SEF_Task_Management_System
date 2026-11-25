@@ -1,4 +1,3 @@
-const { randomBytes, timingSafeEqual } = require('node:crypto');
 const express = require('express');
 const passport = require('passport');
 const { Strategy: LocalStrategy } = require('passport-local');
@@ -53,19 +52,15 @@ function requireLogin(req, res, next) {
   return res.status(401).json({ error: 'Please sign in first.' });
 }
 
-function requireCsrf(req, res, next) {
+function checkApiWrite(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-  const expected = req.session.csrfToken;
-  const submitted = req.get('X-CSRF-Token') || '';
-  if (expected && /^[0-9a-f]{64}$/.test(submitted) &&
-      timingSafeEqual(Buffer.from(expected), Buffer.from(submitted))) {
-    return next();
-  }
-  return res.status(403).json({ error: 'Invalid form token. Please try again.' });
-}
 
-function requireJson(req, res, next) {
-  if (!req.is('application/json')) {
+  const site = req.get('Sec-Fetch-Site');
+  if (site && site !== 'same-origin') {
+    return res.status(403).json({ error: 'Use TaskFlow from the same origin.' });
+  }
+  // JSON writes and DELETE require a browser preflight across origins. This API serves no CORS grants.
+  if (req.method !== 'DELETE' && !req.is('application/json')) {
     return res.status(415).json({ error: 'Send an application/json request body.' });
   }
   return next();
@@ -73,12 +68,7 @@ function requireJson(req, res, next) {
 
 const json = express.json({ limit: '16kb' });
 
-router.get('/csrf', (req, res) => {
-  req.session.csrfToken ??= randomBytes(32).toString('hex');
-  return res.json({ csrfToken: req.session.csrfToken });
-});
-
-router.post('/register', requireJson, requireCsrf, json, async (req, res) => {
+router.post('/register', checkApiWrite, json, async (req, res) => {
   const username = readUsername(req.body);
   const password = req.body?.password;
   if (!username) return res.status(400).json({ error: usernameError });
@@ -93,7 +83,7 @@ router.post('/register', requireJson, requireCsrf, json, async (req, res) => {
   return res.status(201).json({ message: 'Account created. Please log in.' });
 });
 
-router.post('/reset-password', requireJson, requireCsrf, json, async (req, res) => {
+router.post('/reset-password', checkApiWrite, json, async (req, res) => {
   const username = readUsername(req.body);
   const password = req.body?.password;
   if (!username) return res.status(400).json({ error: usernameError });
@@ -111,7 +101,7 @@ router.post('/reset-password', requireJson, requireCsrf, json, async (req, res) 
   return res.status(200).json({ message: 'Password reset. Please log in with your new password.' });
 });
 
-router.post('/login', requireJson, requireCsrf, json, (req, res, next) => {
+router.post('/login', checkApiWrite, json, (req, res, next) => {
   const username = readUsername(req.body);
   const password = req.body?.password;
   const message = 'Invalid username or password.';
@@ -126,13 +116,12 @@ router.post('/login', requireJson, requireCsrf, json, (req, res, next) => {
       if (loginError) return next(loginError);
       req.session.authExpiresAt = Date.now() + sessionLifetime;
       req.session.authVersion = user.authVersion ?? 0;
-      req.session.csrfToken = randomBytes(32).toString('hex');
       return res.status(200).json({ message: 'Signed in.' });
     });
   })(req, res, next);
 });
 
-router.post('/logout', requireLogin, requireCsrf, (req, res, next) => {
+router.post('/logout', requireLogin, checkApiWrite, json, (req, res, next) => {
   req.logout((error) => {
     if (error) return next(error);
     req.session.destroy((destroyError) => {
@@ -143,4 +132,4 @@ router.post('/logout', requireLogin, requireCsrf, (req, res, next) => {
   });
 });
 
-module.exports = { router, requireLogin, requireCsrf, cookieName, cookieOptions, sessionLifetime };
+module.exports = { router, requireLogin, checkApiWrite, cookieName, cookieOptions, sessionLifetime };

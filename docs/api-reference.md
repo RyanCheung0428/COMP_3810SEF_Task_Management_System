@@ -1,24 +1,23 @@
 # REST API 參考
 
-有 JSON 內容的請求使用 `Content-Type: application/json`。README 提供可執行的任務 CRUD 測試指令。 [cURL 示範](../README.zh-Hant.md#curl-示範)
+所有 `POST` 和 `PUT` 請求使用 `Content-Type: application/json`。`GET` 和 `DELETE` 可直接使用路徑。 [cURL 示範](../README.zh-Hant.md#curl-示範)
 
 ## 帳戶與 Session
 
 | 方法及路徑 | 請求 | 成功回應 |
 | --- | --- | --- |
-| `GET /api/auth/csrf` | 可用訪客或已登入的 Session | `200`，包含目前 Session 的 `csrfToken` |
 | `POST /api/auth/register` | JSON `username`、`password` | `201`，註冊成功訊息 |
 | `POST /api/auth/login` | JSON `username`、`password` | `200`，登入成功訊息及新的 Session Cookie |
-| `POST /api/auth/reset-password` | JSON `username`、`password`、`confirmPassword`，可用訪客 Session | `200`，重設成功訊息 |
-| `POST /api/auth/logout` | 已登入的 Session Cookie | `204`，銷毀 Session 並清除 Cookie，回應沒有內容 |
+| `POST /api/auth/reset-password` | JSON `username`、`password`、`confirmPassword` | `200`，重設成功訊息 |
+| `POST /api/auth/logout` | 已登入的 Session Cookie 和 JSON `{}` | `204`，銷毀 Session 並清除 Cookie，回應沒有內容 |
 
-註冊、登入、重設密碼和登出都要在 `X-CSRF-Token` 標頭提交目前 Session 的驗證碼，並帶上對應的 Cookie。登入成功後，保存新的 Session Cookie，再取一次驗證碼供之後的寫入請求使用。
+登入直接傳送帳密 JSON，使用 cURL 的 `-c` 保存回應發出的 Cookie，之後用 `-b` 帶上它。瀏覽器若提供 `Sec-Fetch-Site`，寫入只接受 `same-origin`。API 不授予跨來源 CORS 權限。缺少來源標記的用戶端仍需遵守 JSON 格式。 [寫入檢查](../routes/auth.js#L55)
 
 使用者名稱去除前後空格後按大小寫比對，長度為 1 至 64 個字元。註冊和重設的新密碼去除前後空格後須至少有 8 個字元，原始輸入最多 72 個位元組。重設時，`password` 須與 `confirmPassword` 完全一致。 [帳戶路由及驗證程式碼](../routes/auth.js)
 
 ## 任務
 
-所有任務端點都需要已登入的 Session Cookie。新增、修改和刪除也需要 `X-CSRF-Token`。單筆查詢、修改和刪除使用新增時回傳的任務 `_id`。
+所有任務端點都需要已登入的 Session Cookie。單筆查詢、修改和刪除使用新增時回傳的任務 `_id`。
 
 | 方法及路徑 | 請求 | 成功回應 |
 | --- | --- | --- |
@@ -45,8 +44,8 @@
 | --- | --- |
 | `400` | 註冊、重設密碼、任務欄位、篩選條件或任務 ID 無效 |
 | `401` | 未登入，或帳號密碼錯誤 |
-| `403` | CSRF 驗證碼缺失或無效 |
+| `403` | 瀏覽器的 `Sec-Fetch-Site` 顯示寫入請求來自其他來源 |
 | `404` | 找不到帳戶或任務，或任務不屬於目前帳戶 |
 | `409` | 使用者名稱重複 |
-| `415` | 登入、註冊或重設密碼的請求格式非 `application/json` |
+| `415` | `POST` 或 `PUT` 的請求缺少所需的 `application/json` 格式 |
 | `500` | 伺服器錯誤 |

@@ -9,39 +9,39 @@
 | 位置 | 用途 |
 | --- | --- |
 | [註冊頁](../views/register.ejs#L5)及[重設密碼頁](../views/forgot-password.ejs#L5) | 收集使用者名稱及密碼，重設表單另有確認新密碼欄位。 |
-| [訪客表單處理](../public/forms.js#L82) | 把表單資料送到對應 API，失敗時顯示錯誤，成功後返回登入頁。 |
-| [帳戶路由](../routes/auth.js#L81) | 驗證欄位及 CSRF，使用 bcrypt 產生雜湊，建立帳戶或更新密碼。 |
+| [訪客表單處理](../public/forms.js#L63) | 把表單資料送到對應 API，失敗時顯示錯誤，成功後返回登入頁。 |
+| [帳戶路由](../routes/auth.js#L71) | 檢查寫入來源、JSON 和帳戶欄位，使用 bcrypt 產生雜湊，建立帳戶或更新密碼。 |
 | [User 模型](../models/User.js#L4)及[啟動時初始化索引](../server.js#L29) | 定義帳戶欄位及唯一索引。索引就緒後，伺服器才開始接收請求。 |
-| [Passport 恢復身分](../routes/auth.js#L40) | 比較帳戶與 Session 的登入版本，判斷該 Session 能否繼續使用。 |
+| [Passport 恢復身分](../routes/auth.js#L39) | 比較帳戶與 Session 的登入版本，判斷該 Session 能否繼續使用。 |
 
 ## 操作及請求流程
 
 ### 1. 註冊新帳戶
 
-1. 使用者在 `/register` 提交表單。`forms.js` 用 `FormData` 讀取欄位，取得目前 Session 的 CSRF 驗證碼，再向 `POST /api/auth/register` 送出 JSON。伺服器檢查內容類型和 CSRF，再解析最多 16 KB 的 JSON。 [前端請求](../public/forms.js#L41) · [請求驗證](../routes/auth.js#L56)
-2. `readUsername()` 去除名稱前後空格，接受 1 至 64 個字元。名稱按大小寫比對。`isValidNewPassword()` 要求密碼去除前後空格後至少有 8 個字元，原始輸入最多 72 個位元組。bcrypt 使用原始密碼輸入產生雜湊。 [欄位驗證](../routes/auth.js#L20)
-3. `User.create()` 將名稱及 bcrypt 密碼雜湊寫入 `users`。資料庫的唯一索引同樣適用於同時提交的註冊請求。重複鍵錯誤 `11000` 會轉成 HTTP `409`。成功時 API 回傳 `201`，前端先用 `sessionStorage` 暫存提示，再返回登入頁顯示。 [註冊路由](../routes/auth.js#L81) · [成功提示](../public/forms.js#L82)
+1. 使用者在 `/register` 提交表單。`forms.js` 用 `FormData` 讀取欄位，直接向 `POST /api/auth/register` 送出 JSON。伺服器檢查寫入來源和內容類型，再解析最多 16 KB 的 JSON。 [前端請求](../public/forms.js#L25) · [請求驗證](../routes/auth.js#L55)
+2. `readUsername()` 去除名稱前後空格，接受 1 至 64 個字元。名稱按大小寫比對。`isValidNewPassword()` 要求密碼去除前後空格後至少有 8 個字元，原始輸入最多 72 個位元組。bcrypt 使用原始密碼輸入產生雜湊。 [欄位驗證](../routes/auth.js#L19)
+3. `User.create()` 將名稱及 bcrypt 密碼雜湊寫入 `users`。資料庫的唯一索引同樣適用於同時提交的註冊請求。重複鍵錯誤 `11000` 會轉成 HTTP `409`。成功時 API 回傳 `201`，前端先用 `sessionStorage` 暫存提示，再返回登入頁顯示。 [註冊路由](../routes/auth.js#L71) · [成功提示](../public/forms.js#L63)
 
 ### 2. 用帳戶 ID 連接任務和登入狀態
 
 | 資料位置 | 帳戶流程用到的欄位 |
 | --- | --- |
-| `users` | `_id` 識別帳戶。`username` 有唯一索引。`passwordHash` 由 `select: false` 在一般查詢中略過，登入時明確讀取。`authVersion` 預設為 `0`，`createdAt` 記錄建立時間。 [模型](../models/User.js#L4) · [登入核對](../routes/auth.js#L29) |
+| `users` | `_id` 識別帳戶。`username` 有唯一索引。`passwordHash` 由 `select: false` 在一般查詢中略過，登入時明確讀取。`authVersion` 預設為 `0`，`createdAt` 記錄建立時間。 [模型](../models/User.js#L4) · [登入核對](../routes/auth.js#L28) |
 | `tasks` | `userId` 指向帳戶的 `users._id`。重設密碼後仍沿用同一個 `_id`，所以原有任務會保留。 [任務擁有者欄位](../models/Task.js#L6) · [組員 4 的新增流程](./member-04-task-write-curl.md) |
-| `sessions` | 登入時保存 Passport 的使用者 ID 及當時的 `authVersion`。後續請求帶 Cookie，Passport 讀取同一帳戶以核對版本。 [Session store](../server.js#L51) · [登入時保存版本](../routes/auth.js#L125) |
+| `sessions` | 登入時保存 Passport 的使用者 ID 及當時的 `authVersion`。後續請求帶 Cookie，Passport 讀取同一帳戶以核對版本。 [Session store](../server.js#L51) · [登入時保存版本](../routes/auth.js#L115) |
 
 ### 3. 在本機專題版本重設自己的測試帳戶
 
-1. 以未登入的視窗開啟 **Forgot password?**。重設表單會用同一套 JSON 和 CSRF 檢查，並核對新密碼和確認欄位。 [重設表單](../views/forgot-password.ejs#L5) · [重設路由](../routes/auth.js#L96)
-2. 路由在同一次帳戶更新內寫入新密碼雜湊及將 `authVersion` 加一。成功回傳 `200`，前端返回登入頁並顯示成功訊息。 [更新帳戶](../routes/auth.js#L105) · [成功後導頁](../public/forms.js#L94)
-3. 舊視窗再次發出請求時，Passport 發現 Session 版本和帳戶版本不同，便拒絕恢復登入。例如帳戶由版本 `0` 變為 `1`，舊 Session 保存的版本仍是 `0`。用新密碼登入時，新 Session 會保存版本 `1`，原有任務仍可用相同的擁有者 ID 查回。 [版本核對](../routes/auth.js#L40) · [按帳戶查詢任務](../routes/api.js#L18)
+1. 以未登入的視窗開啟 **Forgot password?**。重設表單使用同一套寫入來源及 JSON 檢查，並核對新密碼和確認欄位。 [重設表單](../views/forgot-password.ejs#L5) · [重設路由](../routes/auth.js#L86)
+2. 路由在同一次帳戶更新內寫入新密碼雜湊及將 `authVersion` 加一。成功回傳 `200`，前端返回登入頁並顯示成功訊息。 [更新帳戶](../routes/auth.js#L95) · [成功後導頁](../public/forms.js#L75)
+3. 舊視窗再次發出請求時，Passport 發現 Session 版本和帳戶版本不同，便拒絕恢復登入。例如帳戶由版本 `0` 變為 `1`，舊 Session 保存的版本仍是 `0`。用新密碼登入時，新 Session 會保存版本 `1`，原有任務仍可用相同的擁有者 ID 查回。 [版本核對](../routes/auth.js#L39) · [按帳戶查詢任務](../routes/api.js#L18)
 
 ## 失敗時會發生甚麼
 
 | 情況 | 結果 |
 | --- | --- |
 | 名稱或新密碼不符規則，或兩次輸入的新密碼不同 | `400`，原表單顯示錯誤。 |
-| CSRF 驗證碼缺少或不符 | `403`，下一次提交會重新取碼。 |
+| 瀏覽器從其他來源提交寫入請求 | 有跨來源標記時回傳 `403`。 |
 | 專題版本找不到要重設的帳戶 | `404`，沒有帳戶資料被更新。 |
 | 使用者名稱重複 | `409`，已存在的帳戶保持原狀。 |
 | 內容類型有誤或 JSON 超過大小限制 | 分別回傳 `415` 或 `413`。 |
@@ -57,4 +57,4 @@
 
 ## 公開上線前的驗收
 
-目前專題的重設流程以訪客 Session 接收表單，欠缺對帳戶持有人身分的驗證。CSRF 驗證碼用於核對請求與目前 Session 的關聯。組員 2 須在公開前完成持有人驗證，確認未通過驗證的請求無法更新密碼或登入版本，成功重設後舊 Session 失效。驗收通過後，組員 6 才可開放公開網址。 [現有重設路由](../routes/auth.js#L96) · [Cloud Run 部署](./member-06-cloud-run-deployment.md)
+目前專題的密碼重設流程仍欠缺帳戶持有人身分驗證。組員 2 須在公開前完成持有人驗證，確認未通過驗證的請求無法更新密碼或登入版本，成功重設後舊 Session 失效。驗收通過後，組員 6 才可開放公開網址。 [現有重設路由](../routes/auth.js#L86) · [Cloud Run 部署](./member-06-cloud-run-deployment.md)

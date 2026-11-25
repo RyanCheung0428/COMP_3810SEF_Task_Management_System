@@ -1,0 +1,72 @@
+# TaskFlow cURL demo｜Ubuntu / Bash，需有 curl 和 jq
+# 把檔案放進終端機目前的資料夾，先在網站 /register 建立示範帳戶。
+# 在檔案所在資料夾執行 source ./TaskFlow-curl-demo.txt。在專案根目錄則執行 source ./docs/TaskFlow-curl-demo.txt。
+# 雲端登入請在同一條 source 指令末尾加上你們的完整 HTTPS 網址。
+# 看到 {"message":"Signed in."} 後，在同一個終端機逐句貼上下面四條 curl。
+# 這四條可以預先放在 Google Sheet 的 K 欄。
+
+: <<'DEMO'
+# CREATE
+curl -fsS -X POST -b "$JAR" -H 'Content-Type: application/json' --data '{"title":"Demo task"}' "$BASE/api/tasks" | jq -c '{_id,title,status}' | tee "$TASK"
+
+# READ
+curl -fsS -X GET -b "$JAR" "$BASE/api/tasks/$(task_id)" | jq -c '{_id,title,status}'
+
+# UPDATE
+curl -fsS -X PUT -b "$JAR" -H 'Content-Type: application/json' --data '{"status":"Completed"}' "$BASE/api/tasks/$(task_id)" | jq -c '{_id,title,status}'
+
+# DELETE
+curl -fsS -X DELETE -b "$JAR" "$BASE/api/tasks/$(task_id)" | jq -c .
+DEMO
+
+# 登入時 cURL 用 -c 儲存 Session Cookie。四條指令用 -b 讀取同一份 Cookie。
+# CREATE 的 tee 會同時顯示和儲存新任務，task_id 讀出該次新增的 MongoDB ID。
+# 示範結束，可輸入 taskflow_logout 登出並清理暫存檔案。
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+  printf '%s\n' 'Please run source ./TaskFlow-curl-demo.txt' >&2
+  exit 2
+fi
+
+task_id() {
+  jq -ej '._id | strings | select(test("^[0-9a-fA-F]{24}$"))' "$TASK"
+}
+
+taskflow_logout() {
+  curl -fsS -b "$JAR" -X POST -H 'Content-Type: application/json' --data '{}' "$BASE/api/auth/logout" -o /dev/null || return 1
+  rm -f -- "$TF_CURL_DIR/cookies" "$TASK"
+  rmdir -- "$TF_CURL_DIR"
+  unset TF_CURL_DIR TASK JAR BASE
+  printf '%s\n' 'Signed out.'
+}
+
+_taskflow_prepare() {
+  local base=${1%/} user pass dir reply
+  command -v curl >/dev/null && command -v jq >/dev/null || {
+    printf '%s\n' 'This demo needs curl and jq.' >&2
+    return 1
+  }
+  IFS= read -r -p 'Demo username: ' user || return 1
+  IFS= read -r -s -p 'Demo password: ' pass || return 1
+  printf '\n' >&2
+  dir=$(mktemp -d) || return 1
+
+  if reply=$(printf '%s\n' "$user" "$pass" | jq -Rnc '{username:input,password:input}' |
+       curl -fsS -c "$dir/cookies" -H 'Content-Type: application/json' --data-binary @- "$base/api/auth/login") &&
+     [[ -n $reply ]]; then
+    if [[ -n ${TF_CURL_DIR:-} && -d $TF_CURL_DIR ]]; then
+      rm -f -- "$TF_CURL_DIR/cookies" "$TF_CURL_DIR/task.json"
+      rmdir -- "$TF_CURL_DIR"
+    fi
+    BASE=$base
+    TF_CURL_DIR=$dir
+    TASK=$dir/task.json
+    JAR=$dir/cookies
+    printf '%s\n' "$reply"
+  else
+    rm -f -- "$dir/cookies"
+    rmdir -- "$dir"
+    return 1
+  fi
+}
+
+_taskflow_prepare "${1:-http://localhost:3000}"
