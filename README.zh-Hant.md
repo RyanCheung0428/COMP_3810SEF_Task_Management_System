@@ -69,11 +69,50 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 
 ### cURL 示範
 
-先啟動 TaskFlow，並在 `/register` 建立示範帳戶。在有 `curl` 和 `jq` 的 Bash 中操作。本機預設為 `http://localhost:3000`。
+先啟動 TaskFlow，並在 `/register` 建立示範帳戶。如果用雲端示範，把每條指令的 `http://localhost:3000` 換成服務的 HTTPS 網址。
 
-**課堂逐句示範。** 在專案根目錄執行 `source ./docs/TaskFlow-curl-demo.txt` 並登入。如使用雲端，在這條指令末尾加上實際 HTTPS 網址。看到 `Signed in.` 後，在同一個終端機逐句貼上檔案開頭的四條 `curl`，每次按 Enter 會顯示一行 JSON。 [四條示範指令](./docs/TaskFlow-curl-demo.txt) · [組員 4 示範步驟](./docs/member-04-task-write-curl.md)
+#### 上台前登入一次
 
-**完整驗收。** 在 Bash 貼上以下程式。若使用其他連接埠或雲端，先把 `BASE` 設為該服務的完整網址。示範會用新增時取得的 `_id` 查詢、修改和刪除同一筆任務。每次請求顯示 HTTP 狀態，結果不符時停止。若在刪除前中斷，可在測試帳戶的任務頁移除當次新增的示範任務。
+把下面的帳號和密碼換成自己的示範帳密，在自己的工作資料夾執行一次。`-c cookies.txt` 會把登入 Cookie 存在這個資料夾。
+
+```bash
+curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' -d '{"username":"你的示範帳號","password":"你的示範密碼"}' http://localhost:3000/api/auth/login
+```
+
+看到 `{"message":"Signed in."}` 就代表登入成功。
+
+#### 課堂示範的四條指令
+
+在同一個資料夾逐句執行以下四條指令。每句都用 `-b cookies.txt` 帶上登入 Cookie，按一次 Enter 就會顯示一行 JSON。
+
+**1. 新增任務（POST）。** 複製回應中的 `_id`。新任務的狀態是 `In Progress`。
+
+```bash
+curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' http://localhost:3000/api/tasks
+```
+
+**2. 讀取任務清單（GET）。** 在回傳的陣列中找出 `Demo task`，核對它的 `_id`。
+
+```bash
+curl -sS -w '\n' -X GET -b cookies.txt http://localhost:3000/api/tasks
+```
+
+**3. 更新任務（PUT）。** 把網址中的 `TASK_ID` 換成第一步的 `_id`。回應中的狀態會變成 `Completed`。
+
+```bash
+curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' http://localhost:3000/api/tasks/TASK_ID
+```
+
+**4. 刪除任務（DELETE）。** 把 `TASK_ID` 換成同一個 `_id`。成功會顯示 `{"message":"Task deleted."}`。
+
+```bash
+curl -sS -w '\n' -X DELETE -b cookies.txt http://localhost:3000/api/tasks/TASK_ID
+```
+
+<details>
+<summary>選用的完整 API 驗收（Bash 和 jq）</summary>
+
+這段程式也會按 ID 查詢任務、核對更新後保留的描述、確認刪除後查詢回傳 `404`，最後登出。使用其他網址時，先把 `BASE` 設為該服務的完整網址。
 
 ```bash
 (
@@ -140,5 +179,7 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
   api_call 204 POST /api/auth/logout -H 'Content-Type: application/json' --data '{}'
 )
 ```
+
+</details>
 
 [驗收及提交指引](./docs/submission-checklist.md)

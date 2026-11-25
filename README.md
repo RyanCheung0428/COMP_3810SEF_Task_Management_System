@@ -69,11 +69,50 @@ For field rules, response formats, and error codes, see the [API reference](./do
 
 ### cURL Demo
 
-Start TaskFlow and create a demo account at `/register`. Use Bash with `curl` and `jq`. The default local URL is `http://localhost:3000`.
+Start TaskFlow and create a demo account at `/register`. For a cloud demo, replace `http://localhost:3000` in each command with your service’s HTTPS URL.
 
-**Live demo.** From the project root, run `source ./docs/TaskFlow-curl-demo.txt` and sign in. For a cloud demo, append your service’s HTTPS URL to that command. After `Signed in.`, paste the four `curl` commands at the top of the file, one at a time in the same terminal. Each prints one line of JSON. [Four demo commands](./docs/TaskFlow-curl-demo.txt) · [Member 4 walkthrough](./docs/member-04-task-write-curl.md)
+#### Log in once before the demo
 
-**Full check.** Paste the block below into Bash. For another port or a cloud deployment, set `BASE` to the service URL first. The demo uses the `_id` returned by the create request to read, update, and delete the same task. It displays the HTTP status for each request and stops if a check fails. If the demo stops before deletion, you can remove the task from the test account's **Tasks** page.
+Replace `YOUR_DEMO_USERNAME` and `YOUR_DEMO_PASSWORD` with your demo account details. Run this in your own working directory. The `-c cookies.txt` option saves the session cookie there.
+
+```bash
+curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' -d '{"username":"YOUR_DEMO_USERNAME","password":"YOUR_DEMO_PASSWORD"}' http://localhost:3000/api/auth/login
+```
+
+A successful login prints `{"message":"Signed in."}`.
+
+#### Four commands for the live demo
+
+Run these four commands one at a time in the same directory. Each uses `-b cookies.txt` to send the saved cookie and prints one line of JSON.
+
+**1. Create a task (POST).** Copy the `_id` from the response. The new task has the status `In Progress`.
+
+```bash
+curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' http://localhost:3000/api/tasks
+```
+
+**2. Read the task list (GET).** Find `Demo task` with the same `_id` in the returned array.
+
+```bash
+curl -sS -w '\n' -X GET -b cookies.txt http://localhost:3000/api/tasks
+```
+
+**3. Update the task (PUT).** Replace `TASK_ID` in the URL with the `_id` from step 1. The response shows `Completed`.
+
+```bash
+curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' http://localhost:3000/api/tasks/TASK_ID
+```
+
+**4. Delete the task (DELETE).** Replace `TASK_ID` with that same `_id`. The response is `{"message":"Task deleted."}`.
+
+```bash
+curl -sS -w '\n' -X DELETE -b cookies.txt http://localhost:3000/api/tasks/TASK_ID
+```
+
+<details>
+<summary>Optional automated API check with Bash and jq</summary>
+
+This check also reads the task by ID, verifies that an update preserves its description, checks for `404` after deletion, and logs out. To use a different URL, set `BASE` before running the block.
 
 ```bash
 (
@@ -140,5 +179,7 @@ Start TaskFlow and create a demo account at `/register`. Use Bash with `curl` an
   api_call 204 POST /api/auth/logout -H 'Content-Type: application/json' --data '{}'
 )
 ```
+
+</details>
 
 [Acceptance and submission checklist](./docs/submission-checklist.md)

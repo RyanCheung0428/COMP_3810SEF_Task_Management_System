@@ -122,11 +122,12 @@ if (!updatedTask) return res.status(404).json({ error: 'Task not found.' });
 
 ## 用 cURL 示範新增、查詢、更新及刪除
 
-先啟動網站，並在 `/register` 建立自己的示範帳戶。在專案根目錄的 Bash 執行 `source ./docs/TaskFlow-curl-demo.txt`。本機預設使用 `http://localhost:3000`。如使用雲端，在指令末尾加上實際 HTTPS 網址。 [逐句指令檔](./TaskFlow-curl-demo.txt) · [Cloud Run 部署指引](./member-06-cloud-run-deployment.md)
+先啟動網站，在 `/register` 建立示範帳戶。上台前執行 README 的登入指令，用 `-c cookies.txt` 保存 Cookie。看到 `{"message":"Signed in."}` 後，在同一個資料夾準備以下四句。 [登入及四條 cURL 原指令](../README.zh-Hant.md#curl-示範)
 
-1. 按提示輸入帳密。cURL 直接送出 `POST /api/auth/login`，使用 `-c` 保存登入 Cookie。看到 `Signed in.` 後，留在同一個終端機。
-2. 逐句貼上指令檔開頭的 `POST`、`GET`、`PUT`、`DELETE`。每條用 `-b` 帶上同一個 Cookie，顯示一行 JSON。第一條會保存新任務的 `_id`，後面三條自動使用該 ID。
-3. `PUT` 回傳 `Completed` 後，可以用同一帳戶重新整理網頁展示結果，再執行 `DELETE`。最後輸入 `taskflow_logout`，它會送出 JSON `{}` 並登出。
+1. 用 `POST /api/tasks` 新增 `Demo task`，複製回應中的 `_id`。
+2. 用 `GET /api/tasks` 讀取任務清單，在陣列中找出相同的 `_id`。
+3. 把 `PUT` 和 `DELETE` 網址中的 `TASK_ID` 換成這個 `_id`。執行 `PUT` 後，在回應中指出 `Completed`，也可以用同一帳戶重新整理網頁展示結果。
+4. 最後執行 `DELETE`，確認回應為 `{"message":"Task deleted."}`。
 
 下表是 README 完整驗收另外會核對的項目。 [完整 cURL 測試](../README.zh-Hant.md#curl-示範)
 
@@ -178,6 +179,6 @@ if (!updatedTask) return res.status(404).json({ error: 'Task not found.' });
 2. 在列表搜尋 `EditDemo` 後開啟 **Edit**。確認三個欄位已預填，按 **Cancel** 返回同一搜尋結果。
 3. 再次開啟 **Edit**，把標題改成只有空格後儲存。確認 PUT 回傳 `400`，標題旁顯示 **Enter a title of 1 to 120 characters.**。輸入 `EditDemo Updated`、清空日期及儲存，確認 **Task updated.** 出現且搜尋條件保留。在 **Network** 面板比較請求和回應，留意回應的 `dueDate` 為 `null`，`status` 仍為原值。
 4. 對同一筆測試任務選 **Delete** 後先取消，確認任務及數量維持原樣，**Network** 面板也沒有 DELETE 請求。再選 **Delete** 並確認，核對 `200`、**Task deleted.** 和重查後的列表。
-5. 在同一終端機逐句展示四個 CRUD 請求，指出相同的 `_id` 及更新後的 `Completed`。排練完整驗收時，再核對原描述、刪除後的 `404` 及登出的 `204`。 [逐句示範](./TaskFlow-curl-demo.txt) · [完整驗收](../README.zh-Hant.md#curl-示範)
+5. 在同一終端機逐句展示四個 CRUD 請求，指出相同的 `_id` 及更新後的 `Completed`。排練完整驗收時，再核對原描述、刪除後的 `404` 及登出的 `204`。 [逐句示範](../README.zh-Hant.md#課堂示範的四條指令) · [完整驗收](../README.zh-Hant.md#curl-示範)
 
 > 我負責新增、編輯和刪除任務。新增和編輯共用表單。新增用 POST，編輯先讀取原有資料，再以 PUT 提交變更。伺服器驗證欄位，並在更新或刪除時同時比對任務 ID 和登入者 ID。刪除前，瀏覽器會要求確認。我亦可以用 cURL 追蹤同一筆任務，驗證局部更新保留原有描述，以及刪除後再查會回傳 404。

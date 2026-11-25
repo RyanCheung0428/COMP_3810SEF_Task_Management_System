@@ -145,7 +145,7 @@ passport.deserializeUser(async (req, id, done) => {
 | 問題或觀察 | 講解時可指出的程式或證據 |
 | --- | --- |
 | 登入失敗後，為甚麼可以直接再試一次？ | `handleForm()` 在 `finally` 清除提交標記和恢復按鈕。帳密錯誤的 `401` 由訪客表單的 `onError` 顯示。使用者可修正帳密再提交。[表單回呼](../public/forms.js#L46) · [訪客錯誤顯示](../public/forms.js#L63) |
-| cURL 如何延續登入狀態？ | 登入使用 `-c` 把回應的 Cookie 存到檔案。後續請求用 `-b` 讀取同一個檔案。 [逐句示範](./TaskFlow-curl-demo.txt) |
+| cURL 如何延續登入狀態？ | 登入使用 `-c` 把回應的 Cookie 存到檔案。後續請求用 `-b` 讀取同一個檔案。 [逐句示範](../README.zh-Hant.md#課堂示範的四條指令) |
 | `POST /api/auth/login` 顯示 `200`，為甚麼還要檢查 `GET /tasks`？ | `200` 表明當次帳密驗證和登入回呼成功。`GET /tasks` 檢查瀏覽器有帶新 Cookie，伺服器也能從 store 恢復身分。Network 可依次核對回應狀態、Cookie 是否已更換，以及下一個請求有否帶上 Cookie。[Session 中介軟件](../server.js#L51) · [頁面保護](../server.js#L65) |
 | `401` 和 `404` 各由哪一層回應？ | 受保護 API 的 `401` 由 `requireLogin()` 回應。指定任務的 `404` 可由 `Task.findOne()` 找不到同時符合任務 ID 和擁有者 ID 的文件而觸發。 [登入檢查](../routes/auth.js#L50) · [單筆任務路由](../routes/api.js#L30) · [組員 4 的 cURL 示範](./member-04-task-write-curl.md) |
 | 前端按登出後沒有導頁，應從哪裏開始看？ | 在 Network 查看登出請求的 Cookie、JSON `{}` 和回應狀態。收到 `204` 時，檢查 `request()` 是否走到 `return true`，以及登出回呼是否呼叫 `signOut()`。[回應分支](../public/forms.js#L31) · [登出回呼](../public/forms.js#L298) |
