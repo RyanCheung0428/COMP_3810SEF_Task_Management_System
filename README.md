@@ -10,7 +10,7 @@ COMP 3810SEF group project for the Fall 2026 semester. TaskFlow lets users log i
 
 | Member | Name | Student ID (SID) | Responsibilities and walkthrough |
 | --- | --- | --- | --- |
-| 1 | TBD | TBD | [Login, logout, sessions, and access control](./docs/member-01-auth-session.md) |
+| 1 | TBD | a | [Login, logout, sessions, and access control](./docs/member-01-auth-session.md) |
 | 2 | TBD | TBD | [Registration and password reset](./docs/member-02-registration-password-reset.md) |
 | 3 | TBD | TBD | [Task list, search, filters, and completing or reopening tasks](./docs/member-03-task-list-status.md) |
 | 4 | TBD | TBD | [Creating, editing, and deleting tasks, plus validation and the cURL demo](./docs/member-04-task-write-curl.md) |
