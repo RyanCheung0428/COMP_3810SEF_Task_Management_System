@@ -78,6 +78,9 @@ Replace `YOUR_DEMO_USERNAME` and `YOUR_DEMO_PASSWORD` with your demo account det
 ```bash
 curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' -d '{"username":"YOUR_DEMO_USERNAME","password":"YOUR_DEMO_PASSWORD"}' http://localhost:3000/api/auth/login
 ```
+```bash
+curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' -d '{"username":"testtest","password":"testtest"}' https://comp-3810sef-group032.cloud.run/api/auth/login
+```
 
 A successful login prints `{"message":"Signed in."}`.
 
