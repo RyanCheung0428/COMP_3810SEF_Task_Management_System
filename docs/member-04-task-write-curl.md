@@ -122,11 +122,11 @@ if (!updatedTask) return res.status(404).json({ error: 'Task not found.' });
 
 ## 用 cURL 示範新增、查詢、更新及刪除
 
-先啟動網站，在 `/register` 建立示範帳戶。上台前執行 README 的登入指令，用 `-c cookies.txt` 保存 Cookie。看到 `{"message":"Signed in."}` 後，在同一個資料夾準備以下四句。 [登入及四條 cURL 原指令](../README.zh-Hant.md#curl-示範)
+上台前在示範網站註冊帳戶，執行 README 中對應雲端或本機的登入指令。看到 `{"message":"Signed in."}` 後，在同一個 Bash 終端機逐句示範。 [登入及四條 cURL 原指令](../README.zh-Hant.md#curl-示範)
 
-1. 用 `POST /api/tasks` 新增 `Demo task`，複製回應中的 `_id`。
+1. 用 `POST /api/tasks` 新增 `Demo task`。指令會顯示回應，並把 `_id` 存入 `$TASK_ID`。
 2. 用 `GET /api/tasks` 讀取任務清單，在陣列中找出相同的 `_id`。
-3. 把 `PUT` 和 `DELETE` 網址中的 `TASK_ID` 換成這個 `_id`。執行 `PUT` 後，在回應中指出 `Completed`，也可以用同一帳戶重新整理網頁展示結果。
+3. 執行 `PUT`。網址會帶入 `$TASK_ID`，回應會顯示 `Completed`。也可以用同一帳戶重新整理網頁展示結果。
 4. 最後執行 `DELETE`，確認回應為 `{"message":"Task deleted."}`。
 
 下表是 README 完整驗收另外會核對的項目。 [完整 cURL 測試](../README.zh-Hant.md#curl-示範)

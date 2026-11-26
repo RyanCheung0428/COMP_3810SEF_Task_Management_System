@@ -40,7 +40,7 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 
 ## 網頁操作
 
-在本機以 Docker Compose 啟動 TaskFlow 後，如使用預設連接埠，請瀏覽 `http://localhost:3000`。雲端版本完成上線驗收後，可使用 Cloud Run 提供的公開 HTTPS 網址。 [本機啟動指引](./docs/setup.md) · [Cloud Run 部署指引](./docs/member-06-cloud-run-deployment.md)
+可開啟第 032 組的雲端網站試用 TaskFlow。本機示範可用 Docker Compose 啟動服務，再開啟 `http://localhost:3000`。 [開啟雲端示範網站](https://comp-3810sef-group032.cloud.run/) · [本機啟動指引](./docs/setup.md) · [Cloud Run 部署指引](./docs/member-06-cloud-run-deployment.md)
 
 1. **登入。** 在 `/register` 填寫自選的 **Username** 和 **Password**，按 **Create account** 建立測試帳戶。在 `/login` 輸入同一組帳密，按 **Log in** 進入 **Tasks**。
 2. **新增。** 按 **Add task**，填寫 **Title**，可選填 **Description** 和 **Due date**，再按 **Save task**。
@@ -69,45 +69,86 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 
 ### cURL 示範
 
-先啟動 TaskFlow，並在 `/register` 建立示範帳戶。如果用雲端示範，把每條指令的 `http://localhost:3000` 換成服務的 HTTPS 網址。
+以下使用第 032 組的雲端網站。上台前先在網站註冊示範帳戶。若在本機示範，可展開下方的「本機示範」使用對應指令。 [開啟雲端示範網站](https://comp-3810sef-group032.cloud.run/) · [註冊示範帳戶](https://comp-3810sef-group032.cloud.run/register)
+
+在同一個 Bash 終端機操作，並準備好 `curl` 和 `jq`。登入 Cookie（`cookies.txt`）和新增任務的回應（`task.json`）會儲存在目前的資料夾。想將示範檔案放在暫存資料夾，可以先執行以下指令。
+
+```bash
+cd "$(mktemp -d)"
+```
 
 #### 上台前登入一次
 
-把下面的帳號和密碼換成自己的示範帳密，在自己的工作資料夾執行一次。`-c cookies.txt` 會把登入 Cookie 存在這個資料夾。
+貼上以下指令，按提示輸入雲端帳號和密碼。輸入密碼時畫面會隱藏字元。成功後會顯示 `{"message":"Signed in."}`，登入狀態會存入 `cookies.txt`。
 
 ```bash
-curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' -d '{"username":"你的示範帳號","password":"你的示範密碼"}' http://localhost:3000/api/auth/login
+(IFS= read -rp 'Username: ' username && IFS= read -rsp 'Password: ' password && printf '\n' >&2 && printf '%s\n' "$username" "$password") | jq -Rn '{username: input, password: input}' | curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' --data-binary @- https://comp-3810sef-group032.cloud.run/api/auth/login
 ```
-
-看到 `{"message":"Signed in."}` 就代表登入成功。
 
 #### 課堂示範的四條指令
 
-在同一個資料夾逐句執行以下四條指令。每句都用 `-b cookies.txt` 帶上登入 Cookie，按一次 Enter 就會顯示一行 JSON。
+留在同一個終端機。每個指令框右上角的 Copy 只會複製一個請求。按 Enter 看到一個 JSON 回應後，再複製下一句。
 
-**1. 新增任務（POST）。** 複製回應中的 `_id`。新任務的狀態是 `In Progress`。
+**1. 新增任務（POST）。** 回應會顯示 `Demo task` 和狀態 `In Progress`。`tee` 會顯示並儲存回應，`jq` 會把新任務的 `_id` 存入 `$TASK_ID`。
 
 ```bash
-curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' http://localhost:3000/api/tasks
+curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' https://comp-3810sef-group032.cloud.run/api/tasks | tee task.json && TASK_ID=$(jq -ej '._id // empty' task.json)
 ```
 
-**2. 讀取任務清單（GET）。** 在回傳的陣列中找出 `Demo task`，核對它的 `_id`。
+**2. 查看任務清單（GET）。** 在回傳的清單找出 `Demo task`，核對它的 `_id`。
+
+```bash
+curl -sS -w '\n' -X GET -b cookies.txt https://comp-3810sef-group032.cloud.run/api/tasks
+```
+
+**3. 更新任務（PUT）。** 網址會自動帶入第一步的 ID，回應中的狀態會變成 `Completed`。
+
+```bash
+curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' "https://comp-3810sef-group032.cloud.run/api/tasks/$TASK_ID"
+```
+
+**4. 刪除任務（DELETE）。** 指令會刪除同一個 ID 的任務，成功時顯示 `{"message":"Task deleted."}`。
+
+```bash
+curl -sS -w '\n' -X DELETE -b cookies.txt "https://comp-3810sef-group032.cloud.run/api/tasks/$TASK_ID"
+```
+
+<details>
+<summary>本機示範（localhost）</summary>
+
+先啟動本機伺服器，使用在本機註冊的帳戶。在按上方步驟準備好的 Bash 終端機，依序貼上以下五句。第一句會保存本機網站的登入 Cookie。 [本機啟動指引](./docs/setup.md) · [本機註冊](http://localhost:3000/register)
+
+**登入。**
+
+```bash
+(IFS= read -rp 'Username: ' username && IFS= read -rsp 'Password: ' password && printf '\n' >&2 && printf '%s\n' "$username" "$password") | jq -Rn '{username: input, password: input}' | curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' --data-binary @- http://localhost:3000/api/auth/login
+```
+
+**1. 新增（POST）。**
+
+```bash
+curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' http://localhost:3000/api/tasks | tee task.json && TASK_ID=$(jq -ej '._id // empty' task.json)
+```
+
+**2. 查看（GET）。**
 
 ```bash
 curl -sS -w '\n' -X GET -b cookies.txt http://localhost:3000/api/tasks
 ```
 
-**3. 更新任務（PUT）。** 把網址中的 `TASK_ID` 換成第一步的 `_id`。回應中的狀態會變成 `Completed`。
+**3. 更新（PUT）。**
 
 ```bash
-curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' http://localhost:3000/api/tasks/TASK_ID
+curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' "http://localhost:3000/api/tasks/$TASK_ID"
 ```
 
-**4. 刪除任務（DELETE）。** 把 `TASK_ID` 換成同一個 `_id`。成功會顯示 `{"message":"Task deleted."}`。
+**4. 刪除（DELETE）。**
 
 ```bash
-curl -sS -w '\n' -X DELETE -b cookies.txt http://localhost:3000/api/tasks/TASK_ID
+curl -sS -w '\n' -X DELETE -b cookies.txt "http://localhost:3000/api/tasks/$TASK_ID"
 ```
+
+</details>
 
 <details>
 <summary>選用的完整 API 驗收（Bash 和 jq）</summary>
