@@ -40,7 +40,7 @@ For other project files and the internal request flow, see the [project architec
 
 ## Web User Guide
 
-For local use, start TaskFlow with Docker Compose and open `http://localhost:3000` if you are using the default port. For the hosted version, use the public HTTPS URL once the release checks are complete. [Local setup](./docs/setup.md) · [Cloud Run deployment](./docs/member-06-cloud-run-deployment.md)
+Use the Group 032 cloud demo to try TaskFlow. For a local demo, start TaskFlow with Docker Compose and open `http://localhost:3000`. [Open the cloud demo](https://comp-3810sef-group032.cloud.run/) · [Local setup](./docs/setup.md) · [Cloud Run deployment](./docs/member-06-cloud-run-deployment.md)
 
 1. **Log in.** At `/register`, choose a **Username** and **Password**, then click **Create account** to create a test account. Enter the same credentials at `/login` and click **Log in** to open **Tasks**.
 2. **Create a task.** Click **Add task**, enter a **Title** and optionally add a **Description** and **Due date**, then click **Save task**.
@@ -69,56 +69,86 @@ For field rules, response formats, and error codes, see the [API reference](./do
 
 ### cURL Demo
 
-Start TaskFlow and create a demo account at `/register`. For a cloud demo, replace `http://localhost:3000` in each command with your service’s HTTPS URL.
+The steps below use the Group 032 cloud demo. Create an account there before presenting. For a local presentation, use the localhost commands in the foldout below. [Open the cloud demo](https://comp-3810sef-group032.cloud.run/) · [Register a demo account](https://comp-3810sef-group032.cloud.run/register)
+
+Use one Bash terminal with `curl` and `jq`. The commands save `cookies.txt` and the task response (`task.json`) in your current directory. To keep these demo files in a temporary directory, run this optional command first.
+
+```bash
+cd "$(mktemp -d)"
+```
 
 #### Log in once before the demo
 
-Replace `YOUR_DEMO_USERNAME` and `YOUR_DEMO_PASSWORD` with your demo account details. Run this in your own working directory. The `-c cookies.txt` option saves the session cookie there.
+Paste this command and enter your cloud account details at the prompts. The password is hidden. A successful login prints `{"message":"Signed in."}` and saves the session in `cookies.txt`.
 
 ```bash
-curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' -d '{"username":"YOUR_DEMO_USERNAME","password":"YOUR_DEMO_PASSWORD"}' http://localhost:3000/api/auth/login
+(IFS= read -rp 'Username: ' username && IFS= read -rsp 'Password: ' password && printf '\n' >&2 && printf '%s\n' "$username" "$password") | jq -Rn '{username: input, password: input}' | curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' --data-binary @- https://comp-3810sef-group032.cloud.run/api/auth/login
 ```
-
-A successful login prints `{"message":"Signed in."}`.
 
 #### Four commands for the live demo
 
-Run these four commands one at a time in the same directory. Each uses `-b cookies.txt` to send the saved cookie and prints one line of JSON.
+Stay in the same terminal. Each Copy button gives you one request. Press Enter to see its JSON response before moving on.
 
-**1. Create a task (POST).** Copy the `_id` from the response. The new task has the status `In Progress`.
-
-```bash
-curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' http://localhost:3000/api/tasks| jq
-curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' https://comp-3810sef-group032.cloud.run/api/tasks| jq
-```
-
-**2. Read the task list (GET).** Find `Demo task` with the same `_id` in the returned array.
+**1. Create a task (POST).** The response shows `Demo task` with status `In Progress`. `tee` displays and saves the reply, and `jq` stores the new `_id` in `$TASK_ID`.
 
 ```bash
-curl -sS -w '\n' -X GET -b cookies.txt http://localhost:3000/api/tasks | jq
-
-curl -sS -w '\n' -X GET -b cookies.txt https://comp-3810sef-group032.cloud.run/api/tasks | jq
+curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' https://comp-3810sef-group032.cloud.run/api/tasks | tee task.json && TASK_ID=$(jq -ej '._id // empty' task.json)
 ```
 
-**3. Update the task (PUT).** Replace `TASK_ID` in the URL with the `_id` from step 1. The response shows `Completed`.
+**2. Read the task list (GET).** Find `Demo task` and its `_id` in the returned list.
 
 ```bash
-curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' http://localhost:3000/api/tasks/TASK_ID| jq
-
-
-curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID| jq
-
+curl -sS -w '\n' -X GET -b cookies.txt https://comp-3810sef-group032.cloud.run/api/tasks
 ```
 
-**4. Delete the task (DELETE).** Replace `TASK_ID` with that same `_id`. The response is `{"message":"Task deleted."}`.
+**3. Update the task (PUT).** The URL uses the ID from step 1. The response now shows `Completed`.
 
 ```bash
-curl -sS -w '\n' -X DELETE -b cookies.txt http://localhost:3000/api/tasks/TASK_ID
-
-
-curl -sS -w '\n' -X DELETE -b cookies.txt https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID
-
+curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' "https://comp-3810sef-group032.cloud.run/api/tasks/$TASK_ID"
 ```
+
+**4. Delete the task (DELETE).** The same ID selects the demo task. The response is `{"message":"Task deleted."}`.
+
+```bash
+curl -sS -w '\n' -X DELETE -b cookies.txt "https://comp-3810sef-group032.cloud.run/api/tasks/$TASK_ID"
+```
+
+<details>
+<summary>Run the same demo on localhost</summary>
+
+Start the local server and use an account registered on that instance. In a Bash terminal prepared as above, run these five commands in order. The login saves the localhost cookie. [Local setup](./docs/setup.md) · [Register locally](http://localhost:3000/register)
+
+**Log in.**
+
+```bash
+(IFS= read -rp 'Username: ' username && IFS= read -rsp 'Password: ' password && printf '\n' >&2 && printf '%s\n' "$username" "$password") | jq -Rn '{username: input, password: input}' | curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' --data-binary @- http://localhost:3000/api/auth/login
+```
+
+**1. Create (POST).**
+
+```bash
+curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' http://localhost:3000/api/tasks | tee task.json && TASK_ID=$(jq -ej '._id // empty' task.json)
+```
+
+**2. Read (GET).**
+
+```bash
+curl -sS -w '\n' -X GET -b cookies.txt http://localhost:3000/api/tasks
+```
+
+**3. Update (PUT).**
+
+```bash
+curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' "http://localhost:3000/api/tasks/$TASK_ID"
+```
+
+**4. Delete (DELETE).**
+
+```bash
+curl -sS -w '\n' -X DELETE -b cookies.txt "http://localhost:3000/api/tasks/$TASK_ID"
+```
+
+</details>
 
 <details>
 <summary>Optional automated API check with Bash and jq</summary>
