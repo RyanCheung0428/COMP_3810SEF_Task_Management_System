@@ -92,6 +92,8 @@ Run these four commands one at a time in the same directory. Each uses `-b cooki
 
 ```bash
 curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' http://localhost:3000/api/tasks| jq
+```
+```bash
 curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' https://comp-3810sef-group032.cloud.run/api/tasks| jq
 ```
 
@@ -99,6 +101,8 @@ curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '
 
 ```bash
 curl -sS -w '\n' -X GET -b cookies.txt http://localhost:3000/api/tasks | jq
+```
+```bash
 
 curl -sS -w '\n' -X GET -b cookies.txt https://comp-3810sef-group032.cloud.run/api/tasks | jq
 ```
@@ -108,6 +112,8 @@ curl -sS -w '\n' -X GET -b cookies.txt https://comp-3810sef-group032.cloud.run/a
 ```bash
 curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' http://localhost:3000/api/tasks/TASK_ID| jq
 
+```
+```bash
 
 curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID| jq
 
@@ -118,6 +124,9 @@ curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{
 ```bash
 curl -sS -w '\n' -X DELETE -b cookies.txt http://localhost:3000/api/tasks/TASK_ID
 
+
+```
+```bash
 
 curl -sS -w '\n' -X DELETE -b cookies.txt https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID
 
