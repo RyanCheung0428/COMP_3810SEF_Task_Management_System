@@ -69,7 +69,7 @@ For field rules, response formats, and error codes, see the [API reference](./do
 
 ### cURL Demo
 
-windos cmd
+Windos cmd
 
 #### Log in once before the demo
 
@@ -79,23 +79,30 @@ Replace `YOUR_DEMO_USERNAME` and `YOUR_DEMO_PASSWORD` with your demo account det
 curl.exe -c cookies.txt --json "{\"username\":\"testtest\",\"password\":\"testtest\"}" "https://comp-3810sef-group032.cloud.run/api/auth/login"
 ```
 A successful login prints `{"message":"Signed in."}`.
-create 
+Create 
 ```bash
 curl.exe -b cookies.txt --json "{\"title\":\"Demo task\"}" "https://comp-3810sef-group032.cloud.run/api/tasks"
 ```
-read
+Read
 ```bash
 curl.exe -X GET -b cookies.txt https://comp-3810sef-group032.cloud.run/api/tasks
 ```
-update (TASK_ID need to change)
+Update (TASK_ID need to change)
 ```bash
 curl.exe -X PUT -b cookies.txt --json "{\"status\":\"Completed\"}" "https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID"
 ```
-delete (TASK_ID need to change)
+Delete (TASK_ID need to change)
 ```bash
 curl.exe -X DELETE -b cookies.txt https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID
 ```
-gcp ssh
+
+
+
+
+
+
+
+GCP ssh
 ```bash
 curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' -d '{"username":"testtest","password":"testtest"}' https://comp-3810sef-group032.cloud.run/api/auth/login
 ```
@@ -118,6 +125,11 @@ delete(TASK_ID need to change)
 ```bash
 curl -sS -w '\n' -X DELETE -b cookies.txt https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID
 ```
+
+
+
+
+
 
 Start TaskFlow and create a demo account at `/register`. For a cloud demo, replace `http://localhost:3000` in each command with your service’s HTTPS URL.
 
