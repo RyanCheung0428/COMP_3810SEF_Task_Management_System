@@ -10,6 +10,14 @@ const emptyTask = {
   dueDate: null
 };
 
+// Parse a YYYY-MM-DD string as midnight UTC, or return null if invalid.
+function parseDueDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return null;
+  return date;
+}
+
 // Return cleaned task fields and errors. A partial update checks only the submitted fields.
 function validateTask(input, { partial = false, allowStatus = true } = {}) {
   const task = partial ? {} : { ...emptyTask };
@@ -30,16 +38,10 @@ function validateTask(input, { partial = false, allowStatus = true } = {}) {
     if (field === 'dueDate') {
       if (value === '' || value === null) {
         task.dueDate = null;
-      } else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-        const date = new Date(`${value}T00:00:00.000Z`);
-        // Store dates at midnight UTC. Convert back to catch impossible dates such as February 30.
-        if (!Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value) {
-          task.dueDate = date;
-        } else {
-          errors.dueDate = 'Enter a valid date.';
-        }
       } else {
-        errors.dueDate = 'Enter a valid date in YYYY-MM-DD format.';
+        const date = parseDueDate(value);
+        if (date) task.dueDate = date;
+        else errors.dueDate = 'Enter a valid date in YYYY-MM-DD format.';
       }
     } else if (typeof value !== 'string') {
       errors[field] = 'Enter a text value.';
@@ -85,9 +87,27 @@ function readTaskFilters(input) {
   if (filters.title.length > 120) {
     errors.title = 'Use 120 characters or fewer.';
   } else if (filters.title) {
-    // Treat symbols as literal text and match without regard to uppercase or lowercase.
+    // Match title, description, or any part of the YYYY-MM-DD dueDate.
     const text = filters.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    query.title = new RegExp(text, 'i');
+    const pattern = new RegExp(text, 'i');
+    query.$or = [
+      { title: pattern },
+      { description: pattern },
+      {
+        $expr: {
+          $regexMatch: {
+            input: {
+              $ifNull: [
+                { $dateToString: { format: '%Y-%m-%d', date: '$dueDate' } },
+                ''
+              ]
+            },
+            regex: text,
+            options: 'i'
+          }
+        }
+      }
+    ];
   }
 
   // Add status to the same query so a task must match both filters.
