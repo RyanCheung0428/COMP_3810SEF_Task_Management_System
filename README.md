@@ -69,7 +69,7 @@ For field rules, response formats, and error codes, see the [API reference](./do
 
 ### cURL Demo
 
-Windos cmd
+# Windos cmd
 
 #### Log in once before the demo
 
@@ -98,11 +98,7 @@ curl.exe -X DELETE -b cookies.txt https://comp-3810sef-group032.cloud.run/api/ta
 
 
 
-
-
-
-
-GCP ssh
+# GCP ssh
 ```bash
 curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' -d '{"username":"testtest","password":"testtest"}' https://comp-3810sef-group032.cloud.run/api/auth/login
 ```
@@ -130,7 +126,7 @@ curl -sS -w '\n' -X DELETE -b cookies.txt https://comp-3810sef-group032.cloud.ru
 
 
 
-
+# local
 Start TaskFlow and create a demo account at `/register`. For a cloud demo, replace `http://localhost:3000` in each command with your service’s HTTPS URL.
 
 #### Log in once before the demo
