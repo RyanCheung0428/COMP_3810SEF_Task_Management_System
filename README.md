@@ -69,6 +69,27 @@ For field rules, response formats, and error codes, see the [API reference](./do
 
 ### cURL Demo
 
+windos cmd
+```bash
+curl.exe -c cookies.txt --json "{\"username\":\"testtest\",\"password\":\"testtest\"}" "https://comp-3810sef-group032.cloud.run/api/auth/login"
+```
+create 
+```bash
+curl.exe -b cookies.txt --json "{\"title\":\"Demo task\"}" "https://comp-3810sef-group032.cloud.run/api/tasks"
+```
+read
+```bash
+curl.exe -X GET -b cookies.txt https://comp-3810sef-group032.cloud.run/api/tasks
+```
+update 
+```bash
+curl.exe -X PUT -b cookies.txt --json "{\"status\":\"Completed\"}" "https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID"
+```
+delete
+```bash
+curl.exe -X DELETE -b cookies.txt https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID
+```
+
 Start TaskFlow and create a demo account at `/register`. For a cloud demo, replace `http://localhost:3000` in each command with your service’s HTTPS URL.
 
 #### Log in once before the demo
