@@ -25,6 +25,15 @@
       <strong id="completed-count"></strong>
     </a>
   </nav>
+  <div class="list-toolbar">
+    <details class="task-options sort-menu" id="task-sort" data-sort="newest">
+      <summary class="task-sort-button">⇅ <span id="task-sort-label">Sort: Newest</span> ▾</summary>
+      <div class="task-options-panel">
+        <button type="button" data-sort-value="newest">Newest</button>
+        <button type="button" data-sort-value="dueDate">Date</button>
+      </div>
+    </details>
+  </div>
   <p class="notice notice-success" role="status" hidden></p>
   <div class="panel empty" hidden>
     <h2><%= searchTitle ? 'No matching tasks' : completed ? 'No completed tasks yet' : 'No unfinished tasks' %></h2>

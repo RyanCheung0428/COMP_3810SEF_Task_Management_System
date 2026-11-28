@@ -345,16 +345,94 @@ textarea { resize: vertical; }
 .overdue {
   display: inline-block;
   margin-left: 0.3rem;
-  padding: 0.15rem 0.4rem;
-  color: #773c00;
-  background: #fff1d7;
+  padding: 0.15rem 0.45rem;
+  color: #8f2230;
+  background: #fff1f1;
   border-radius: 0.3rem;
   font-weight: 650;
+}
+
+.overdue.due-today {
+  color: #773c00;
+  background: #fff1d7;
+}
+
+.overdue.due-tomorrow {
+  color: #066c92;
+  background: #e8f4fa;
 }
 
 .overdue.due-soon {
   color: #125d55;
   background: #e6f3f0;
+}
+
+.list-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem;
+}
+
+.task-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #172e31;
+  background: white;
+  border: 1px solid #d4dfdf;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.task-sort-button:hover,
+.sort-menu[open] .task-sort-button {
+  background: #e6f3f0;
+}
+
+.task-sort-button:focus-visible {
+  outline: none;
+  border-color: #125d55;
+}
+
+.sort-menu .task-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 2.6rem;
+  padding: 0 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #172e31;
+  background: white;
+  border: 1px solid #d4dfdf;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.sort-menu .task-sort-button:hover,
+.sort-menu[open] .task-sort-button {
+  background: #e6f3f0;
+}
+
+.sort-menu .task-sort-button:focus-visible {
+  outline: none;
+  border-color: #125d55;
+}
+
+.sort-menu .task-options-panel {
+  min-width: 100%;
+  margin-top: 0.25rem;
+}
+
+.sort-menu .task-options-panel button {
+  min-height: 2.5rem;
+  font-size: 0.95rem;
 }
 
 .empty h2 { margin: 0; }

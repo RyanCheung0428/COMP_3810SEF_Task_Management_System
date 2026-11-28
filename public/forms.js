@@ -116,15 +116,6 @@ function buildTaskRow(task, view, today, searchTitle) {
     time.dateTime = date;
     time.textContent = date;
     row.querySelector('.task-date').hidden = false;
-    row.querySelector('.overdue').hidden = completed || date >= today;
-  }
-
-  if (task.dueDate) {
-    const date = task.dueDate.slice(0, 10);
-    const time = row.querySelector('time');
-    time.dateTime = date;
-    time.textContent = date;
-    row.querySelector('.task-date').hidden = false;
 
     const badge = row.querySelector('.overdue');
     const days = daysUntil(date, today);
@@ -133,10 +124,11 @@ function buildTaskRow(task, view, today, searchTitle) {
       badge.hidden = false;
     } else if (!completed && days === 0) {
       badge.textContent = 'Due today';
+      badge.classList.add('due-today');
       badge.hidden = false;
     } else if (!completed && days === 1) {
       badge.textContent = 'Due tomorrow';
-      badge.classList.add('due-soon');
+      badge.classList.add('due-tomorrow');
       badge.hidden = false;
     } else if (!completed && days <= 7) {
       badge.textContent = 'Due in ' + days + ' days';
@@ -169,6 +161,14 @@ async function loadTaskList(page, searchState) {
   const completed = tasks.filter((task) => task.status === 'Completed');
   const unfinished = tasks.filter((task) => task.status !== 'Completed');
   const visible = page.dataset.view === 'completed' ? completed : unfinished;
+  if (page.querySelector('#task-sort')?.dataset.sort === 'dueDate') {
+    visible.sort((a, b) => {
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
+  }
   const list = page.querySelector('.task-list');
   const today = hongKongDate.format(new Date());
   page.querySelector('#completed-count').textContent = completed.length;
@@ -233,6 +233,15 @@ function initializeTaskList(page) {
   };
 
   searchInput.addEventListener('input', scheduleSearch);
+  const sortMenu = page.querySelector('#task-sort');
+  sortMenu.addEventListener('click', (event) => {
+    const option = event.target.closest('[data-sort-value]');
+    if (!option) return;
+    sortMenu.dataset.sort = option.dataset.sortValue;
+    page.querySelector('#task-sort-label').textContent = 'Sort: ' + option.textContent;
+    sortMenu.open = false;
+    reload();
+  });
   searchInput.addEventListener('compositionstart', () => {
     composing = true;
     clearTimeout(searchTimer);
