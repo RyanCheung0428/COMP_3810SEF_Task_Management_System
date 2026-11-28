@@ -89,6 +89,11 @@ function taskApi(id) {
   return '/api/tasks' + (id ? '/' + encodeURIComponent(id) : '');
 }
 
+function daysUntil(date, today) {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.round((Date.parse(date + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / msPerDay);
+}
+
 function buildTaskRow(task, view, today, searchTitle) {
   const row = document.querySelector('#task-row').content.firstElementChild.cloneNode(true);
   const completed = task.status === 'Completed';
@@ -112,6 +117,32 @@ function buildTaskRow(task, view, today, searchTitle) {
     time.textContent = date;
     row.querySelector('.task-date').hidden = false;
     row.querySelector('.overdue').hidden = completed || date >= today;
+  }
+
+  if (task.dueDate) {
+    const date = task.dueDate.slice(0, 10);
+    const time = row.querySelector('time');
+    time.dateTime = date;
+    time.textContent = date;
+    row.querySelector('.task-date').hidden = false;
+
+    const badge = row.querySelector('.overdue');
+    const days = daysUntil(date, today);
+    if (!completed && days < 0) {
+      badge.textContent = 'Overdue';
+      badge.hidden = false;
+    } else if (!completed && days === 0) {
+      badge.textContent = 'Due today';
+      badge.hidden = false;
+    } else if (!completed && days === 1) {
+      badge.textContent = 'Due tomorrow';
+      badge.classList.add('due-soon');
+      badge.hidden = false;
+    } else if (!completed && days <= 7) {
+      badge.textContent = 'Due in ' + days + ' days';
+      badge.classList.add('due-soon');
+      badge.hidden = false;
+    }
   }
 
   row.querySelector('summary').setAttribute('aria-label', 'Actions for ' + task.title);
