@@ -21,7 +21,7 @@
 
 | 方法及路徑 | 請求 | 成功回應 |
 | --- | --- | --- |
-| `GET /api/tasks` | 可用 `title` 和 `status` 組合篩選。標題搜尋不分大小寫 | `200`，自己的任務 JSON 陣列，按建立時間由新到舊排列 |
+| `GET /api/tasks` | 可用 `title` 和 `status` 組合篩選。`title` 不分大小寫，會同時比對標題、描述與截止日期（`YYYY-MM-DD`） | `200`，自己的任務 JSON 陣列，按建立時間由新到舊排列 |
 | `GET /api/tasks/:id` | 路徑中的任務 ID | `200`，指定的任務 |
 | `POST /api/tasks` | JSON，至少提供 `title` | `201`，新增的任務，包含 `_id` |
 | `PUT /api/tasks/:id` | JSON，至少提供一個可編輯欄位，保留未提交的欄位 | `200`，更新後的任務 |
