@@ -57,6 +57,7 @@ nav, .actions {
 
 .page-heading {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: 0.75rem;
@@ -69,9 +70,9 @@ nav, .actions {
 .task-search {
   position: relative;
   display: flex;
-  flex: 1 1 20rem;
+  flex: 1 1 15rem;
   min-width: 0;
-  max-width: 20rem;
+  max-width: 16rem;
   margin: 0;
 }
 
@@ -367,47 +368,17 @@ textarea { resize: vertical; }
   background: #e6f3f0;
 }
 
-.list-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 0 0 0.75rem;
-}
-
-.task-sort-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  height: 2.5rem;
-  padding: 0 0.75rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #172e31;
-  background: white;
-  border: 1px solid #d4dfdf;
-  border-radius: 0.5rem;
-  cursor: pointer;
-}
-
-.task-sort-button:hover,
-.sort-menu[open] .task-sort-button {
-  background: #e6f3f0;
-}
-
-.task-sort-button:focus-visible {
-  outline: none;
-  border-color: #125d55;
-}
-
 .sort-menu .task-sort-button {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  height: 2.6rem;
-  padding: 0 0.9rem;
-  font-size: 0.95rem;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 9.5rem;
+  height: 2.75rem;
+  padding: 0 0.7rem;
+  font-size: 0.9rem;
   font-weight: 500;
+  white-space: nowrap;
   color: #172e31;
   background: white;
   border: 1px solid #d4dfdf;
@@ -432,7 +403,7 @@ textarea { resize: vertical; }
 
 .sort-menu .task-options-panel button {
   min-height: 2.5rem;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .empty h2 { margin: 0; }

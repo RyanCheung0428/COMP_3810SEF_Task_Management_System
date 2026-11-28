@@ -13,7 +13,14 @@
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m7 7 10 10M17 7 7 17"></path></svg>
       </button>
     </form>
-    <a class="button" id="add-task" href="/tasks/new<%= viewQuery %>">Add task</a>
+    <details class="task-options sort-menu" id="task-sort" data-sort="newest">
+      <summary class="task-sort-button">⇅ <span id="task-sort-label">Sort: Newest</span> ▾</summary>
+      <div class="task-options-panel">
+        <button type="button" data-sort-value="newest">Newest</button>
+        <button type="button" data-sort-value="dueDate">Date</button>
+      </div>
+    </details>
+    <a class="button" id="add-task" href="/tasks/new<%= viewQuery %>">+ Add task</a>
   </div>
   <nav class="stats" aria-label="Task status">
     <a class="panel stat" data-view="" href="<%= inProgressUrl %>"<% if (!completed) { %> aria-current="page"<% } %>>
@@ -25,15 +32,6 @@
       <strong id="completed-count"></strong>
     </a>
   </nav>
-  <div class="list-toolbar">
-    <details class="task-options sort-menu" id="task-sort" data-sort="newest">
-      <summary class="task-sort-button">⇅ <span id="task-sort-label">Sort: Newest</span> ▾</summary>
-      <div class="task-options-panel">
-        <button type="button" data-sort-value="newest">Newest</button>
-        <button type="button" data-sort-value="dueDate">Date</button>
-      </div>
-    </details>
-  </div>
   <p class="notice notice-success" role="status" hidden></p>
   <div class="panel empty" hidden>
     <h2><%= searchTitle ? 'No matching tasks' : completed ? 'No completed tasks yet' : 'No unfinished tasks' %></h2>
