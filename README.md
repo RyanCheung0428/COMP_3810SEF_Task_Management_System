@@ -69,32 +69,82 @@ For field rules, response formats, and error codes, see the [API reference](./do
 
 ### cURL Demo
 
-Start TaskFlow and create a demo account at `/register`. For a cloud demo, replace `http://localhost:3000` in each command with your service’s HTTPS URL.
+#### Windows cmd
 
-#### Log in once before the demo
-
-Replace `YOUR_DEMO_USERNAME` and `YOUR_DEMO_PASSWORD` with your demo account details. Run this in your own working directory. The `-c cookies.txt` option saves the session cookie there.
+Log in once before the demo (`-c cookies.txt` saves the session cookie):
 
 ```bash
-curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' -d '{"username":"YOUR_DEMO_USERNAME","password":"YOUR_DEMO_PASSWORD"}' http://localhost:3000/api/auth/login
+curl.exe -c cookies.txt --json "{\"username\":\"testtest\",\"password\":\"testtest\"}" "[https://comp-3810sef-group032.cloud.run/api/auth/login](https://comp-3810sef-group032.cloud.run/api/auth/login)"
 ```
+
+A successful login prints `{"message":"Signed in."}`.
+
+Create:
+```bash
+curl.exe -b cookies.txt --json "{\"title\":\"Demo task\"}" "[https://comp-3810sef-group032.cloud.run/api/tasks](https://comp-3810sef-group032.cloud.run/api/tasks)"
+```
+
+Read:
+```bash
+curl.exe -X GET -b cookies.txt [https://comp-3810sef-group032.cloud.run/api/tasks](https://comp-3810sef-group032.cloud.run/api/tasks)
+```
+
+Update (replace `TASK_ID`):
+```bash
+curl.exe -X PUT -b cookies.txt --json "{\"status\":\"Completed\"}" "[https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID](https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID)"
+```
+
+Delete (replace `TASK_ID`):
+```bash
+curl.exe -X DELETE -b cookies.txt [https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID](https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID)
+```
+
+#### GCP ssh
+
 ```bash
 curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' -d '{"username":"testtest","password":"testtest"}' [https://comp-3810sef-group032.cloud.run/api/auth/login](https://comp-3810sef-group032.cloud.run/api/auth/login)
 ```
 
 A successful login prints `{"message":"Signed in."}`.
 
-#### Four commands for the live demo
+Create:
+```bash
+curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' [https://comp-3810sef-group032.cloud.run/api/tasks](https://comp-3810sef-group032.cloud.run/api/tasks) | jq
+```
+
+Read:
+```bash
+curl -sS -w '\n' -X GET -b cookies.txt [https://comp-3810sef-group032.cloud.run/api/tasks](https://comp-3810sef-group032.cloud.run/api/tasks) | jq
+```
+
+Update (replace `TASK_ID`):
+```bash
+curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' [https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID](https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID) | jq
+```
+
+Delete (replace `TASK_ID`):
+```bash
+curl -sS -w '\n' -X DELETE -b cookies.txt [https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID](https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID)
+```
+
+#### Local
+
+Start TaskFlow and create a demo account at `/register`. For a cloud demo, replace `http://localhost:3000` in each command with your service's HTTPS URL.
+
+Log in once before the demo:
+
+```bash
+curl -sS -w '\n' -X POST -c cookies.txt -H 'Content-Type: application/json' -d '{"username":"YOUR_DEMO_USERNAME","password":"YOUR_DEMO_PASSWORD"}' http://localhost:3000/api/auth/login
+```
+
+A successful login prints `{"message":"Signed in."}`.
 
 Run these four commands one at a time in the same directory. Each uses `-b cookies.txt` to send the saved cookie and prints one line of JSON.
 
 **1. Create a task (POST).** Copy the `_id` from the response. The new task has the status `In Progress`.
 
 ```bash
-curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' http://localhost:3000/api/tasks| jq
-```
-```bash
-curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' [https://comp-3810sef-group032.cloud.run/api/tasks](https://comp-3810sef-group032.cloud.run/api/tasks)| jq
+curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '{"title":"Demo task"}' http://localhost:3000/api/tasks | jq
 ```
 
 **2. Read the task list (GET).** Find `Demo task` with the same `_id` in the returned array.
@@ -102,34 +152,17 @@ curl -sS -w '\n' -X POST -b cookies.txt -H 'Content-Type: application/json' -d '
 ```bash
 curl -sS -w '\n' -X GET -b cookies.txt http://localhost:3000/api/tasks | jq
 ```
-```bash
-
-curl -sS -w '\n' -X GET -b cookies.txt [https://comp-3810sef-group032.cloud.run/api/tasks](https://comp-3810sef-group032.cloud.run/api/tasks) | jq
-```
 
 **3. Update the task (PUT).** Replace `TASK_ID` in the URL with the `_id` from step 1. The response shows `Completed`.
 
 ```bash
-curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' http://localhost:3000/api/tasks/TASK_ID| jq
-
-```
-```bash
-
-curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' [https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID](https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID)| jq
-
+curl -sS -w '\n' -X PUT -b cookies.txt -H 'Content-Type: application/json' -d '{"status":"Completed"}' http://localhost:3000/api/tasks/TASK_ID | jq
 ```
 
 **4. Delete the task (DELETE).** Replace `TASK_ID` with that same `_id`. The response is `{"message":"Task deleted."}`.
 
 ```bash
 curl -sS -w '\n' -X DELETE -b cookies.txt http://localhost:3000/api/tasks/TASK_ID
-
-
-```
-```bash
-
-curl -sS -w '\n' -X DELETE -b cookies.txt [https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID](https://comp-3810sef-group032.cloud.run/api/tasks/TASK_ID)
-
 ```
 
 <details>
