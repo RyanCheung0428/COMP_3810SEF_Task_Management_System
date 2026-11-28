@@ -2,18 +2,25 @@
 <div id="task-page" data-view="<%= completed ? 'completed' : '' %>" data-search-title="<%= searchTitle %>">
   <div class="page-heading">
     <form id="task-search" class="task-search" method="get" action="/tasks" role="search">
-      <label class="visually-hidden" for="task-search-title">Search tasks by title</label>
+      <label class="visually-hidden" for="task-search-title">Search tasks by title, description, or date</label>
       <% if (completed) { %><input type="hidden" name="view" value="completed"><% } %>
       <svg class="task-search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <circle cx="10.5" cy="10.5" r="6.5"></circle>
         <path d="m15.5 15.5 4.5 4.5"></path>
       </svg>
-      <input id="task-search-title" name="title" type="search" maxlength="120" placeholder="Search by title" value="<%= searchTitle %>" autocomplete="off">
+      <input id="task-search-title" name="title" type="search" maxlength="120" placeholder="Search" value="<%= searchTitle %>" autocomplete="off">
       <button id="clear-task-search" class="task-search-clear" type="button" aria-label="Clear title search"<% if (!searchTitle) { %> hidden<% } %>>
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m7 7 10 10M17 7 7 17"></path></svg>
       </button>
     </form>
-    <a class="button" id="add-task" href="/tasks/new<%= viewQuery %>">Add task</a>
+    <details class="task-options sort-menu" id="task-sort" data-sort="newest">
+      <summary class="task-sort-button">⇅ <span id="task-sort-label">Sort: Newest</span> ▾</summary>
+      <div class="task-options-panel">
+        <button type="button" data-sort-value="newest">Newest</button>
+        <button type="button" data-sort-value="dueDate">Date</button>
+      </div>
+    </details>
+    <a class="button" id="add-task" href="/tasks/new<%= viewQuery %>">+ Add task</a>
   </div>
   <nav class="stats" aria-label="Task status">
     <a class="panel stat" data-view="" href="<%= inProgressUrl %>"<% if (!completed) { %> aria-current="page"<% } %>>

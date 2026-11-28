@@ -89,6 +89,11 @@ function taskApi(id) {
   return '/api/tasks' + (id ? '/' + encodeURIComponent(id) : '');
 }
 
+function daysUntil(date, today) {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.round((Date.parse(date + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / msPerDay);
+}
+
 function buildTaskRow(task, view, today, searchTitle) {
   const row = document.querySelector('#task-row').content.firstElementChild.cloneNode(true);
   const completed = task.status === 'Completed';
@@ -111,7 +116,25 @@ function buildTaskRow(task, view, today, searchTitle) {
     time.dateTime = date;
     time.textContent = date;
     row.querySelector('.task-date').hidden = false;
-    row.querySelector('.overdue').hidden = completed || date >= today;
+
+    const badge = row.querySelector('.overdue');
+    const days = daysUntil(date, today);
+    if (!completed && days < 0) {
+      badge.textContent = 'Overdue';
+      badge.hidden = false;
+    } else if (!completed && days === 0) {
+      badge.textContent = 'Due today';
+      badge.classList.add('due-today');
+      badge.hidden = false;
+    } else if (!completed && days === 1) {
+      badge.textContent = 'Due tomorrow';
+      badge.classList.add('due-tomorrow');
+      badge.hidden = false;
+    } else if (!completed && days <= 7) {
+      badge.textContent = 'Due in ' + days + ' days';
+      badge.classList.add('due-soon');
+      badge.hidden = false;
+    }
   }
 
   row.querySelector('summary').setAttribute('aria-label', 'Actions for ' + task.title);
@@ -138,6 +161,14 @@ async function loadTaskList(page, searchState) {
   const completed = tasks.filter((task) => task.status === 'Completed');
   const unfinished = tasks.filter((task) => task.status !== 'Completed');
   const visible = page.dataset.view === 'completed' ? completed : unfinished;
+  if (page.querySelector('#task-sort')?.dataset.sort === 'dueDate') {
+    visible.sort((a, b) => {
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
+  }
   const list = page.querySelector('.task-list');
   const today = hongKongDate.format(new Date());
   page.querySelector('#completed-count').textContent = completed.length;
@@ -202,6 +233,15 @@ function initializeTaskList(page) {
   };
 
   searchInput.addEventListener('input', scheduleSearch);
+  const sortMenu = page.querySelector('#task-sort');
+  sortMenu.addEventListener('click', (event) => {
+    const option = event.target.closest('[data-sort-value]');
+    if (!option) return;
+    sortMenu.dataset.sort = option.dataset.sortValue;
+    page.querySelector('#task-sort-label').textContent = 'Sort: ' + option.textContent;
+    sortMenu.open = false;
+    reload();
+  });
   searchInput.addEventListener('compositionstart', () => {
     composing = true;
     clearTimeout(searchTimer);

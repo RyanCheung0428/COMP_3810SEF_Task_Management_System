@@ -22,7 +22,7 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 | 檔案 | 用途 |
 | --- | --- |
 | [`server.js`](./server.js) | 啟動 Express、連接 MongoDB，並設定 Session、EJS 和路由。 |
-| [`package.json`](./package.json) | 定義 `npm start` 及直接相依套件 `bcryptjs`、`connect-mongo`、`ejs`、`express`、`express-session`、`mongodb`、`mongoose`、`passport`、`passport-local`。 |
+| [`package.json`](./package.json) | 定義 `npm start` 及直接相依套件 `bcryptjs`、`connect-mongo`、`dotenv`、`ejs`、`express`、`express-session`、`mongodb`、`mongoose`、`passport`、`passport-local`。 |
 | [`public/forms.js`](./public/forms.js) | 呼叫 API、處理表單及更新任務列表。 |
 | [`public/styles.css`](./public/styles.css) | 設定頁面版面、表單和任務列表樣式。 |
 | [`views/login.ejs`](./views/login.ejs) | 顯示登入表單。 |
@@ -43,8 +43,8 @@ COMP 3810SEF 2026 年秋季學期小組專題。TaskFlow 讓使用者登入後�
 在本機以 Docker Compose 啟動 TaskFlow 後，如使用預設連接埠，請瀏覽 `http://localhost:3000`。雲端版本完成上線驗收後，可使用 Cloud Run 提供的公開 HTTPS 網址。 [本機啟動指引](./docs/setup.md) · [Cloud Run 部署指引](./docs/member-06-cloud-run-deployment.md)
 
 1. **登入。** 在 `/register` 填寫自選的 **Username** 和 **Password**，按 **Create account** 建立測試帳戶。在 `/login` 輸入同一組帳密，按 **Log in** 進入 **Tasks**。
-2. **新增。** 按 **Add task**，填寫 **Title**，可選填 **Description** 和 **Due date**，再按 **Save task**。
-3. **查看。** 在 **Tasks** 頁查看任務。可用 **Search by title** 搜尋標題，再按 **In progress** 或 **Completed** 按狀態查看結果。
+2. **新增。** 按 **+ Add task**，填寫 **Title**，可選填 **Description** 和 **Due date**，再按 **Save task**。
+3. **查看與排序。** 在 **Tasks** 頁查看任務。可用 **Search** 同時搜尋標題、描述或截止日期（支援部分日期，例如 `11` 或 `30`），用 **Sort** 切換 **Newest**／**Date** 排序，再按 **In progress** 或 **Completed** 按狀態查看結果。未完成且已逾期或 7 天內到期的任務會顯示對應提示標籤（**Overdue**、**Due today**、**Due tomorrow**、**Due in X days**）。
 4. **修改。** 在任務的 **⋯** 選單按 **Edit**，修改欄位後按 **Save task**。
 5. **刪除。** 在任務的 **⋯** 選單按 **Delete**，並確認刪除。
 6. **登出。** 按 **Log out** 回到登入頁。
